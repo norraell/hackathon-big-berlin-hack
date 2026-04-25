@@ -15,6 +15,13 @@ COPY app ./app
 # Install Python dependencies
 RUN pip install --no-cache-dir -e .
 
+# Create non-root user
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
 # Expose port
 EXPOSE 8000
 
