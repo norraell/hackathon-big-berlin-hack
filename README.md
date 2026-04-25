@@ -273,34 +273,17 @@ The GCP Terraform configuration includes:
 
 For AWS deployment, see:
 
-- **[AWS Terraform Guide](infra/terraform/README.md)** - Complete AWS infrastructure setup
 - **[Deployment Guide](infra/DEPLOYMENT.md)** - Step-by-step deployment instructions
 
-Quick start:
+**Note:** AWS Terraform configuration is not yet implemented. You can:
+1. Use the GCP Terraform configuration as a reference
+2. Deploy manually following the deployment guide
+3. Contribute AWS Terraform configuration to the project
 
-```bash
-cd infra/terraform
-
-# Configure variables
-cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your credentials
-
-# Deploy infrastructure
-make init
-make apply
-
-# Deploy application
-make deploy-app
-make db-migrate
-
-# Monitor
-make logs
-```
-
-The Terraform configuration includes:
+For manual AWS deployment, the infrastructure should include:
 - **VPC** with multi-AZ setup
 - **RDS PostgreSQL** with automated backups
-- **ECS Fargate** for containerized application
+- **ECS Fargate** or **App Runner** for containerized application
 - **Application Load Balancer** with WebSocket support
 - **CloudWatch** monitoring and alerting
 - **Secrets Manager** for credential management

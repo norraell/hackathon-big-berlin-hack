@@ -30,6 +30,11 @@ hackathon/
 .env
 .env.local
 
+# Credentials
+credentials/
+*-key.json
+gcp-*.json
+
 # IDEs
 .vscode/
 .idea/

@@ -1,4 +1,4 @@
--e git+ssh://git@github.com/norraell/hackathon-big-berlin-hack.git@470aa4953ad8dea0ad7671984ca2bca06ae7ad0b#egg=ai_claims_intake
+# -e git+ssh://git@github.com/norraell/hackathon-big-berlin-hack.git@470aa4953ad8dea0ad7671984ca2bca06ae7ad0b#egg=ai_claims_intake
 aiohappyeyeballs==2.6.1
 aiohttp==3.13.5
 aiohttp-retry==2.9.1
