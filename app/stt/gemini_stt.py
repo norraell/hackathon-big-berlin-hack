@@ -4,8 +4,16 @@ import asyncio
 import logging
 import base64
 import io
-from typing import Optional, Callable
+from typing import Optional, Callable, TYPE_CHECKING, Any
 from app.config import settings
+
+if TYPE_CHECKING:
+    import google.generativeai as genai
+else:
+    try:
+        import google.generativeai as genai  # type: ignore
+    except ImportError:
+        genai = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +47,7 @@ class GeminiSTTHandler:
         self.audio_buffer = bytearray()
         
         # Gemini model
-        self.model = None
+        self.model: Any = None
         
         # Transcription state
         self.current_transcript = ""
@@ -58,23 +66,25 @@ class GeminiSTTHandler:
         """Start the STT processing session."""
         logger.info("Starting Gemini STT (batch processing mode)")
         
-        try:
-            import google.generativeai as genai
-        except ImportError as e:
-            logger.error(f"Failed to import google.generativeai: {e}")
+        if genai is None:
+            logger.error("google.generativeai package not installed")
             raise RuntimeError(
                 "google-generativeai package not installed. "
                 "Install with: pip install google-generativeai"
-            ) from e
+            )
         
         try:
             # Configure Gemini
-            genai.configure(api_key=settings.gemini_api_key)
+            genai.configure(api_key=settings.gemini_api_key)  # type: ignore
             
-            # Use Gemini Pro for audio transcription
-            self.model = genai.GenerativeModel('gemini-1.5-flash')
+            # Use a configurable Gemini model for audio transcription.
+            # gemini-2.5-flash is also used successfully elsewhere in the app.
+            self.model = genai.GenerativeModel(settings.gemini_stt_model_name)  # type: ignore
             
-            logger.info("✓ Gemini model initialized for audio transcription")
+            logger.info(
+                f"✓ Gemini model initialized for audio transcription: "
+                f"{settings.gemini_stt_model_name}"
+            )
             
         except Exception as e:
             logger.error(f"Failed to initialize Gemini: {e}")
@@ -127,8 +137,6 @@ class GeminiSTTHandler:
     async def _process_audio(self) -> None:
         """Process accumulated audio chunks using Gemini."""
         try:
-            import google.generativeai as genai
-            
             while self.is_streaming:
                 await asyncio.sleep(self.chunk_duration_ms / 1000.0)
                 

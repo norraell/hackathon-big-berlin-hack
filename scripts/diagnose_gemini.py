@@ -141,15 +141,15 @@ def test_simple_generation():
             print(f"❌ FAIL with gemini-pro: {e}")
             
             # Try alternative model
-            print("\nTrying gemini-1.5-flash...")
+            print("\nTrying gemini-2.5-flash...")
             try:
-                model = genai.GenerativeModel('gemini-1.5-flash')  # type: ignore[attr-defined]
+                model = genai.GenerativeModel('gemini-2.5-flash')  # type: ignore[attr-defined]
                 response = model.generate_content("Say 'Hello' in one word")
-                print(f"✓ Generation successful with gemini-1.5-flash!")
+                print(f"✓ Generation successful with gemini-2.5-flash!")
                 print(f"  Response: {response.text[:100]}")
                 return True
             except Exception as e2:
-                print(f"❌ FAIL with gemini-1.5-flash: {e2}")
+                print(f"❌ FAIL with gemini-2.5-flash: {e2}")
                 return False
                 
     except Exception as e:
@@ -220,7 +220,7 @@ async def test_live_api():
             
             # Try alternative models
             print("\n  Trying alternative models...")
-            for model_name in ["models/gemini-2.0-flash", "models/gemini-1.5-flash"]:
+            for model_name in ["models/gemini-2.0-flash", "gemini-2.5-flash"]:
                 try:
                     print(f"\n  Testing {model_name}...")
                     async with client.aio.live.connect(

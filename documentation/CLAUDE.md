@@ -25,7 +25,7 @@ FastAPI WebSocket server (this repo)
     │
     ├─► Gemini STT (streaming, multilingual)        # speech → text
     │
-    ├─► Google Gemini LLM (gemini-1.5-flash) # dialog policy + tool calls
+    ├─► Google Gemini LLM (gemini-2.5-flash) # dialog policy + tool calls
     │
     └─► Gradium TTS (WebSocket, streaming PCM)       # text → speech
     │
@@ -42,7 +42,7 @@ Note on the LLM: Using Google Gemini for both STT and LLM simplifies the archite
 | Web | FastAPI + Uvicorn | Native async, WebSocket support for Twilio Media Streams |
 | Telephony | Twilio Programmable Voice + Media Streams | Inbound PSTN, bidirectional audio |
 | STT | Google Gemini (`gemini-2.0-flash` or audio-capable model) | Multilingual, streaming |
-| LLM | Google Gemini (`gemini-1.5-flash`) | Fast response times, function calling support, same API as STT |
+| LLM | Google Gemini (`gemini-2.5-flash`) | Fast response times, function calling support, same API as STT |
 | TTS | Gradium via official `gradium` Python SDK (`pip install gradium`) | Sub-300 ms time-to-first-audio, word-level timestamps for accurate barge-in, connection multiplexing across turns; SDK wraps the WebSocket protocol |
 | Storage | Postgres (claims, transcripts, session state) | — |
 | Audio | `audioop` / `numpy` for μ-law ↔ PCM resampling | Twilio sends μ-law 8 kHz; STT/TTS expect 16 kHz PCM |

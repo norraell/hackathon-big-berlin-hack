@@ -56,7 +56,7 @@ The code has been updated to use `gemini-2.0-flash-exp`, but you can try other m
 ```python
 # In app/stt/gemini_stt.py, line ~95
 self._session_ctx = self.client.aio.live.connect(
-    model="models/gemini-2.0-flash-exp",  # Try: gemini-pro, gemini-1.5-flash, etc.
+    model="models/gemini-2.5-flash",  # Try: gemini-pro, gemini-2.5-flash, etc.
     config=config
 )
 ```

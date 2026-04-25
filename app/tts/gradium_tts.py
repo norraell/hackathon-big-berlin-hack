@@ -77,7 +77,7 @@ class GradiumTTSHandler:
             # Connect with API key in header
             self.ws = await connect(
                 settings.gradium_tts_endpoint,
-                extra_headers={
+                additional_headers={
                     "x-api-key": settings.gradium_api_key,
                 },
             )
@@ -86,7 +86,7 @@ class GradiumTTSHandler:
             setup_message = {
                 "type": "setup",
                 "voice_id": self.voice_id,
-                "model_name": "gradium-tts-v1",
+                "model_name": settings.gradium_tts_model_name,
                 "output_format": self.output_format,
                 "sample_rate": self.sample_rate,
             }

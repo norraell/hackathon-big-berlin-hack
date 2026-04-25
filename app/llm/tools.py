@@ -158,12 +158,55 @@ def convert_tools_to_gemini_format() -> list[dict[str, Any]]:
     gemini_tools = []
     for tool in TOOLS:
         function = tool["function"]
+        parameters = function["parameters"]
+        
+        # Convert OpenAI schema to Gemini schema format
+        # Gemini expects properties and required at the root level
+        gemini_parameters = {
+            "type": "OBJECT",  # Gemini uses uppercase TYPE enum
+            "properties": {},
+            "required": parameters.get("required", [])
+        }
+        
+        # Convert each property
+        for prop_name, prop_spec in parameters.get("properties", {}).items():
+            gemini_prop = {
+                "type": _convert_type_to_gemini(prop_spec.get("type", "string")),
+                "description": prop_spec.get("description", "")
+            }
+            
+            # Add enum if present
+            if "enum" in prop_spec:
+                gemini_prop["enum"] = prop_spec["enum"]
+            
+            gemini_parameters["properties"][prop_name] = gemini_prop
+        
         gemini_tools.append({
             "name": function["name"],
             "description": function["description"],
-            "parameters": function["parameters"],
+            "parameters": gemini_parameters,
         })
     return gemini_tools
+
+
+def _convert_type_to_gemini(openai_type: str) -> str:
+    """Convert OpenAI type to Gemini type enum.
+    
+    Args:
+        openai_type: OpenAI type string (e.g., "string", "number", "object")
+        
+    Returns:
+        Gemini type enum string (e.g., "STRING", "NUMBER", "OBJECT")
+    """
+    type_mapping = {
+        "string": "STRING",
+        "number": "NUMBER",
+        "integer": "INTEGER",
+        "boolean": "BOOLEAN",
+        "array": "ARRAY",
+        "object": "OBJECT",
+    }
+    return type_mapping.get(openai_type.lower(), "STRING")
 
 
 def get_tool_by_name(tool_name: str) -> dict[str, Any] | None:

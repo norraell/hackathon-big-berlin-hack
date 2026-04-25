@@ -26,6 +26,10 @@ class Settings(BaseSettings):
 
     # Gradium TTS Configuration
     gradium_tts_voice_id: str = Field(..., description="Default Gradium voice ID")
+    gradium_tts_model_name: str = Field(
+        default="sonic-2",
+        description="Gradium TTS model name",
+    )
     gradium_tts_endpoint: str = Field(
         default="wss://api.gradium.ai/api/speech/tts",
         description="Gradium TTS WebSocket endpoint",
@@ -47,6 +51,10 @@ class Settings(BaseSettings):
     stt_provider: str = Field(
         default="gemini",
         description="STT provider: 'gemini' (default, uses Gemini API) or 'google_cloud' (requires separate credentials)"
+    )
+    gemini_stt_model_name: str = Field(
+        default="gemini-1.5-flash",
+        description="Gemini model name used for batch audio transcription",
     )
 
     # Security

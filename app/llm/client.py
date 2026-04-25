@@ -6,6 +6,8 @@ import logging
 from typing import AsyncGenerator, Optional, Callable, Any
 
 import google.generativeai as genai
+from google.generativeai.generative_models import GenerativeModel
+from google.generativeai.types import GenerationConfig
 
 from app.config import settings
 from app.llm.prompts import get_system_prompt
@@ -56,7 +58,7 @@ class GeminiLLMClient:
         self.is_streaming = False
         
         # Cache for generation configs
-        self._generation_configs: dict[tuple[int, float], genai.GenerationConfig] = {}
+        self._generation_configs: dict[tuple[int, float], GenerationConfig] = {}
         
         logger.info(f"GeminiLLMClient initialized with language: {language}")
 
@@ -68,8 +70,8 @@ class GeminiLLMClient:
             
             # Initialize model with system instruction and tools
             gemini_tools = convert_tools_to_gemini_format()
-            self.model = genai.GenerativeModel(
-                model_name="gemini-1.5-flash",
+            self.model = GenerativeModel(
+                model_name="gemini-2.5-flash",
                 system_instruction=self.system_prompt,
                 tools=gemini_tools,
             )
@@ -173,7 +175,7 @@ class GeminiLLMClient:
         self,
         max_tokens: int,
         temperature: float,
-    ) -> genai.GenerationConfig:
+    ) -> GenerationConfig:
         """Get or create a cached generation config.
         
         Args:
@@ -185,7 +187,7 @@ class GeminiLLMClient:
         """
         key = (max_tokens, temperature)
         if key not in self._generation_configs:
-            self._generation_configs[key] = genai.GenerationConfig(
+            self._generation_configs[key] = GenerationConfig(
                 max_output_tokens=max_tokens,
                 temperature=temperature,
             )

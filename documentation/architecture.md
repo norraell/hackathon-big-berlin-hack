@@ -10,7 +10,7 @@ FastAPI WebSocket server (this repo) ── Direct public IP (POC setup)
 │
 ├─► Google Gemini STT (streaming, multilingual)    # speech → text
 │
-├─► Google Gemini LLM (gemini-1.5-flash)  # dialog policy + tool calls
+├─► Google Gemini LLM (gemini-2.5-flash)  # dialog policy + tool calls
 │
 └─► Gradium TTS (WebSocket, streaming PCM)        # text → speech
     │
@@ -29,7 +29,7 @@ FastAPI WebSocket server (this repo) ── Direct public IP (POC setup)
 | Web        | FastAPI + Uvicorn                                                           | Native async, WebSocket support for Twilio Media Streams                                                                               |
 | Telephony  | Twilio Programmable Voice + Media Streams                                   | Inbound PSTN, bidirectional audio                                                                                                      |
 | STT        | Google Gemini (Live API)                                                   | Multilingual, streaming, integrated with Gemini ecosystem                                                                              |
-| LLM        | Google Gemini (`gemini-1.5-flash`)                                         | Fast response times, function calling support                                                                                          |
+| LLM        | Google Gemini (`gemini-2.5-flash`)                                         | Fast response times, function calling support                                                                                          |
 | TTS        | Gradium (WebSocket streaming, `wss://api.gradium.ai/api/speech/tts`)       | Sub-300 ms time-to-first-audio, word-level timestamps for accurate barge-in, connection multiplexing across turns                     |
 | Storage    | Postgres (claims, transcripts, session state)                               | —                                                                                                                                      |
 | Audio      | audioop / numpy for μ-law ↔ PCM resampling                                 | Twilio sends μ-law 8 kHz; STT/TTS expect 16 kHz PCM                                                                                   |

@@ -17,7 +17,7 @@ Successfully replaced Groq LLM with Google Gemini LLM to simplify the architectu
 3. **`app/llm/client.py`**: Complete rewrite
    - Renamed class from `GroqLLMClient` to `GeminiLLMClient`
    - Uses `google.generativeai` library
-   - Model: `gemini-1.5-flash`
+   - Model: `gemini-2.5-flash`
    - Maintains same interface for compatibility
    - Supports streaming completions
    - Supports function/tool calling
@@ -106,7 +106,7 @@ If you encounter issues:
 
 1. **Import Errors**: Ensure `google-generativeai` is installed
 2. **API Key Issues**: Verify `GEMINI_API_KEY` is set correctly
-3. **Model Errors**: Ensure you have access to `gemini-1.5-flash` model
+3. **Model Errors**: Ensure you have access to `gemini-2.5-flash` model
 4. **Streaming Issues**: Check that `asyncio.to_thread` is working correctly
 
 ## Questions?
