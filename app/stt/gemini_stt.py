@@ -94,7 +94,7 @@ class GeminiSTTHandler:
                 
                 # Create session context
                 self._session_ctx = self.client.aio.live.connect(
-                    model="models/gemini-2.0-flash-exp",
+                    model="models/gemini-2.5-flash-native-audio-latest",
                     config=config
                 )
                 
@@ -111,7 +111,7 @@ class GeminiSTTHandler:
                         "Gemini Live API returned internal error (1011). This may be due to:\n"
                         "1. API not available in your region\n"
                         "2. Invalid API key or insufficient permissions\n"
-                        "3. Model 'gemini-2.0-flash-exp' not accessible\n"
+                        "3. Model 'gemini-2.5-flash-native-audio-latest' not accessible\n"
                         "4. Live API not enabled for your account\n"
                         "Please check your Gemini API configuration and try:\n"
                         "- Verifying your API key at https://aistudio.google.com/apikey\n"
