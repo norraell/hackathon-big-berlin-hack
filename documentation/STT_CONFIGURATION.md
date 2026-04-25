@@ -1,17 +1,34 @@
 # Speech-to-Text (STT) Configuration Guide
 
-## Current Status: Gemini Live API Not Available
+## Overview
 
-The Gemini Live API for real-time speech-to-text is **not currently available** in the stable `google-generativeai` package (v0.8.3). This means the `gemini` STT provider will not work.
+This system supports two STT providers:
 
-## Error You're Seeing
+1. **Gemini STT** (Default) - Uses Google Gemini's multimodal capabilities for audio transcription
+2. **Google Cloud STT** (Optional) - Uses Google Cloud Speech-to-Text for streaming transcription
 
+## Gemini STT (Default - No Extra Setup Required)
+
+The default configuration uses Gemini for speech-to-text transcription. This works with just your `GEMINI_API_KEY` - no additional credentials needed!
+
+### How It Works
+
+- Uses Gemini's multimodal model to transcribe audio
+- Processes audio in batches (every 3 seconds)
+- No streaming, but simpler setup
+- Good for development and testing
+
+### Configuration
+
+```bash
+# In your .env file:
+STT_PROVIDER=gemini
+GEMINI_API_KEY=your_gemini_api_key_here
 ```
-ImportError: cannot import name 'genai' from 'google' (unknown location)
-RuntimeError: Gemini Live API is not available
-```
 
-## Solution: Use Google Cloud Speech-to-Text
+That's it! No Google Cloud credentials required.
+
+## Google Cloud STT (Optional - Better for Production)
 
 Google Cloud Speech-to-Text is a production-ready, stable alternative that provides excellent real-time transcription for telephony applications.
 
