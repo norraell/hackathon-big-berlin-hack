@@ -38,9 +38,6 @@ resource "aws_secretsmanager_secret_version" "app_secrets" {
     # Database URL (from RDS secret)
     DATABASE_URL = jsondecode(aws_secretsmanager_secret_version.db_credentials.secret_string).url
 
-    # Redis URL (from Redis secret)
-    REDIS_URL = jsondecode(aws_secretsmanager_secret_version.redis_credentials.secret_string).url
-
     # Public Base URL (will be set after ALB creation)
     PUBLIC_BASE_URL = var.domain_name != "" ? "https://${var.domain_name}" : "https://${aws_lb.main.dns_name}"
 
@@ -49,8 +46,7 @@ resource "aws_secretsmanager_secret_version" "app_secrets" {
   })
 
   depends_on = [
-    aws_secretsmanager_secret_version.db_credentials,
-    aws_secretsmanager_secret_version.redis_credentials
+    aws_secretsmanager_secret_version.db_credentials
   ]
 }
 
@@ -70,8 +66,7 @@ resource "aws_iam_policy" "secrets_access" {
         ]
         Resource = [
           aws_secretsmanager_secret.app_secrets.arn,
-          aws_secretsmanager_secret.db_credentials.arn,
-          aws_secretsmanager_secret.redis_credentials.arn
+          aws_secretsmanager_secret.db_credentials.arn
         ]
       },
       {

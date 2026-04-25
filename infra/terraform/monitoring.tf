@@ -79,7 +79,7 @@ resource "aws_cloudwatch_dashboard" "main" {
           period = 300
           stat   = "Average"
           region = var.aws_region
-          title  = "Redis Metrics"
+          title  = "Database Metrics"
         }
       },
       {

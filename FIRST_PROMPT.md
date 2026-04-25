@@ -10,7 +10,7 @@ Read `CLAUDE.md` end to end before doing anything else. Then bootstrap the backe
 
 1. **Project skeleton** matching the layout in `CLAUDE.md` section 4. Empty modules are fine where noted, but each must have a docstring describing what goes in it.
 
-2. **`pyproject.toml`** with: `fastapi`, `uvicorn[standard]`, `twilio`, `google-generativeai`, `gradium`, `pydantic-settings`, `sqlalchemy[asyncio]`, `asyncpg`, `alembic`, `redis`, `numpy`, `python-multipart`, `websockets`, `httpx`. Dev deps: `pytest`, `pytest-asyncio`, `ruff`, `mypy`. The `websockets` dep is for the Twilio Media Streams server side, not Gradium — Gradium goes through its official SDK.
+2. **`pyproject.toml`** with: `fastapi`, `uvicorn[standard]`, `twilio`, `google-generativeai`, `gradium`, `pydantic-settings`, `sqlalchemy[asyncio]`, `asyncpg`, `alembic`, `numpy`, `python-multipart`, `websockets`, `httpx`. Dev deps: `pytest`, `pytest-asyncio`, `ruff`, `mypy`. The `websockets` dep is for the Twilio Media Streams server side, not Gradium — Gradium goes through its official SDK.
 
 3. **`app/config.py`** — `Settings` class via `pydantic-settings`, loading every variable listed in `CLAUDE.md` section 8. Validate that required keys are present at startup. Validate that `GRADIUM_VOICE_ID` is set (or that a per-language voice map is configured), and that `SUPPORTED_LANGUAGES` is a subset of Gradium's supported set (en, fr, de, es, pt).
 
@@ -25,7 +25,7 @@ Read `CLAUDE.md` end to end before doing anything else. Then bootstrap the backe
 
 6. **`app/telephony/media_stream.py`** — async WS handler. Parse Twilio's JSON frames (`connected`, `start`, `media`, `stop`). Decode the base64 μ-law payload. Hold a per-call `Session` object (defined in `app/dialog/session.py`). Log structured events (call SID, stream SID, frame count, codec). No audio processing yet — the goal is a clean, observable pipe.
 
-7. **`app/dialog/session.py`** — minimal `Session` dataclass: `call_sid`, `stream_sid`, `language`, `state` (enum from the state machine), `started_at`, `transcript: list[Turn]`, `partial_claim: dict`. Include an in-memory `SessionStore` for now (Redis comes later).
+7. **`app/dialog/session.py`** — minimal `Session` dataclass: `call_sid`, `stream_sid`, `language`, `state` (enum from the state machine), `started_at`, `transcript: list[Turn]`, `partial_claim: dict`. Include an in-memory `SessionStore` for session management.
 
 8. **`app/dialog/state_machine.py`** — `DialogState` enum (`GREETING`, `DISCLOSURE`, `CONSENT`, `INTAKE`, `CONFIRM`, `CLOSE`, `ENDED`) and a `transition(session, event)` function with the legal transitions encoded. No-op on illegal transitions but log a warning.
 

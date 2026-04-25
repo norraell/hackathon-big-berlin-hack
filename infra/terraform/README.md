@@ -8,7 +8,6 @@ The infrastructure includes:
 
 - **VPC**: Multi-AZ VPC with public and private subnets
 - **RDS PostgreSQL**: Managed database for claims storage
-- **ElastiCache Redis**: In-memory cache for session state
 - **ECS Fargate**: Containerized application hosting
 - **Application Load Balancer**: HTTP/HTTPS/WebSocket traffic routing
 - **Secrets Manager**: Secure credential storage
@@ -137,7 +136,7 @@ For Media Streams, the WebSocket URL is: `wss://your-domain.com/media-stream`
 
 - **VPC**: Isolated network with CIDR `10.0.0.0/16`
 - **Public Subnets**: For ALB (2 AZs)
-- **Private Subnets**: For ECS, RDS, Redis (2 AZs)
+- **Private Subnets**: For ECS, RDS (2 AZs)
 - **NAT Gateways**: For outbound internet access from private subnets
 - **VPC Flow Logs**: Network traffic monitoring
 
@@ -152,8 +151,6 @@ For Media Streams, the WebSocket URL is: `wss://your-domain.com/media-stream`
 
 ### Cache
 
-- **Engine**: Redis 7
-- **Node Type**: Configurable (default: `cache.t4g.micro`)
 - **Encryption**: In-transit and at-rest encryption
 - **Auth**: Token-based authentication
 - **Backups**: Automated snapshots (5-day retention)
@@ -198,7 +195,6 @@ Approximate monthly costs for a development environment:
 |---------|--------------|--------------|
 | ECS Fargate | 2 tasks (1 vCPU, 2GB) | ~$30 |
 | RDS PostgreSQL | db.t4g.micro | ~$15 |
-| ElastiCache Redis | cache.t4g.micro | ~$12 |
 | Application Load Balancer | Standard | ~$20 |
 | NAT Gateway | 2 AZs | ~$65 |
 | Data Transfer | Moderate usage | ~$10 |
@@ -218,7 +214,6 @@ Production costs will be higher due to:
 ```hcl
 environment                = "dev"
 db_instance_class          = "db.t4g.micro"
-redis_node_type            = "cache.t4g.micro"
 ecs_desired_count          = 1
 enable_deletion_protection = false
 ```
@@ -228,7 +223,6 @@ enable_deletion_protection = false
 ```hcl
 environment                = "staging"
 db_instance_class          = "db.t4g.small"
-redis_node_type            = "cache.t4g.small"
 ecs_desired_count          = 2
 enable_deletion_protection = false
 ```
@@ -238,8 +232,6 @@ enable_deletion_protection = false
 ```hcl
 environment                = "prod"
 db_instance_class          = "db.r6g.large"
-redis_node_type            = "cache.r6g.large"
-redis_num_cache_nodes      = 2
 ecs_desired_count          = 4
 ecs_max_capacity           = 20
 enable_deletion_protection = true
@@ -323,8 +315,6 @@ terraform apply
 - Automated daily backups (7-day retention)
 - Manual snapshots available via AWS Console
 
-**Redis Backups:**
-- Automated snapshots (5-day retention)
 - Point-in-time recovery available
 
 **Disaster Recovery:**
@@ -363,7 +353,6 @@ Check CloudWatch metrics:
 - ALB target response time
 - ECS CPU/Memory utilization
 - RDS CPU/Connections
-- Redis CPU/Memory
 
 ### WebSocket Connection Failures
 

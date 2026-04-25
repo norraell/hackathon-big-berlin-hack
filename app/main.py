@@ -43,7 +43,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.error(f"Failed to initialize database: {e}", exc_info=True)
         raise
     
-    # TODO: Initialize Redis connection
     # TODO: Warm up AI service connections
     
     yield
@@ -59,7 +58,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         logger.error(f"Error closing database: {e}", exc_info=True)
     
-    # TODO: Close Redis connections
     # TODO: Close AI service connections
 
 
@@ -96,7 +94,6 @@ async def health_check() -> dict[str, str]:
     health_status = {
         "status": "healthy",
         "database": "unknown",
-        "redis": "not_implemented",
         "ai_services": "not_implemented",
     }
     

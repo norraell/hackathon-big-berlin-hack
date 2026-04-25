@@ -333,7 +333,6 @@ Response:
 {
   "status": "healthy",
   "database": "ok",
-  "redis": "not_implemented",
   "ai_services": "not_implemented"
 }
 ```
@@ -381,8 +380,7 @@ python scripts/generate_mock_data.py
 ## Next Steps
 
 1. **Integrate with Dialog System**: Use verification in the conversation flow
-2. **Add Redis Caching**: Cache verification results
-3. **Implement Telematics**: Add vehicle location/speed data
+2. **Implement Telematics**: Add vehicle location/speed data
 4. **Enhanced Fraud Detection**: ML-based fraud scoring
 5. **Document Upload**: Store photos and documents
 6. **Notification System**: Email/SMS confirmations

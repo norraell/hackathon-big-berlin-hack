@@ -389,8 +389,7 @@ curl http://localhost:8000/health
 4. Add verification results to TTS responses
 
 ### Medium-term
-1. Add Redis caching for verification results
-2. Implement document upload for claims
+1. Implement document upload for claims
 3. Add telematics data integration
 4. Enhance fraud detection with ML models
 5. Add notification system (email/SMS)

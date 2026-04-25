@@ -45,8 +45,8 @@ This document describes the AWS infrastructure architecture for the AI Claims In
               ┌──────────────┼──────────────┐
               │              │              │
      ┌────────▼────────┐    │    ┌────────▼────────┐
-     │  RDS PostgreSQL │    │    │ ElastiCache     │
-     │   (Multi-AZ)    │    │    │  Redis Cluster  │
+     │  RDS PostgreSQL │    │    │                 │
+     │   (Multi-AZ)    │    │    │                 │
      │ Private Subnets │    │    │ Private Subnets │
      └─────────────────┘    │    └─────────────────┘
                             │
@@ -78,14 +78,12 @@ This document describes the AWS infrastructure architecture for the AI Claims In
 **Private Subnets**
 - Host ECS tasks (application containers)
 - Host RDS database
-- Host ElastiCache Redis
 - No direct internet access (via NAT Gateway)
 
 **Security Groups**
 - ALB Security Group: Allow HTTP (80) and HTTPS (443) from internet
 - ECS Security Group: Allow traffic from ALB on port 8000
 - RDS Security Group: Allow PostgreSQL (5432) from ECS
-- Redis Security Group: Allow Redis (6379) from ECS
 
 ### 2. Compute Layer
 
@@ -145,9 +143,6 @@ This document describes the AWS infrastructure architecture for the AI Claims In
 
 ### 5. Cache Layer
 
-**ElastiCache Redis**
-- Engine: Redis 7.x
-- Node type: cache.t4g.micro to cache.r6g.large
 - Cluster mode: Disabled (single shard)
 - Multi-AZ with automatic failover (production)
 - Encryption in-transit (TLS)
@@ -184,7 +179,6 @@ This document describes the AWS infrastructure architecture for the AI Claims In
 
 **Stored Secrets:**
 - Database credentials
-- Redis auth token
 - Twilio credentials
 - AI service API keys
 - Application secret key
@@ -206,7 +200,6 @@ This document describes the AWS infrastructure architecture for the AI Claims In
 - ECS: CPU, Memory, Task count
 - ALB: Request count, Response time, Error rate
 - RDS: CPU, Connections, Storage
-- Redis: CPU, Memory, Evictions
 - Custom application metrics
 
 **CloudWatch Alarms**
@@ -257,7 +250,7 @@ This document describes the AWS infrastructure architecture for the AI Claims In
    - Convert back to μ-law for Twilio
 
 4. **State Management**
-   - Session state stored in Redis
+   - Session state stored in database
    - Dialog state machine progression
    - Transcript buffering
 
@@ -278,7 +271,6 @@ This document describes the AWS infrastructure architecture for the AI Claims In
 **Database Tier**
 - RDS Multi-AZ with synchronous replication
 - Automatic failover (1-2 minutes)
-- Redis Multi-AZ with automatic failover
 
 **Network Tier**
 - NAT Gateways in each AZ
@@ -287,13 +279,12 @@ This document describes the AWS infrastructure architecture for the AI Claims In
 ### Disaster Recovery
 
 **RTO (Recovery Time Objective): 15 minutes**
-- Automated failover for RDS and Redis
+- Automated failover for RDS
 - ECS tasks auto-restart on failure
 - ALB health checks detect issues
 
 **RPO (Recovery Point Objective): 5 minutes**
 - Continuous RDS replication
-- Redis snapshots every 5 minutes
 - Transaction logs for point-in-time recovery
 
 ## Scalability
@@ -310,9 +301,6 @@ This document describes the AWS infrastructure architecture for the AI Claims In
 - Connection pooling
 - Query optimization
 
-**Cache**
-- Redis cluster mode (optional)
-- Sharding for large datasets
 
 ### Vertical Scaling
 
@@ -360,7 +348,7 @@ This document describes the AWS infrastructure architecture for the AI Claims In
    - VPC Flow Logs enabled
 
 2. **Data Security**
-   - Encryption at rest (RDS, Redis, S3)
+   - Encryption at rest (RDS, S3)
    - Encryption in transit (TLS/SSL)
    - Secrets in Secrets Manager
 
@@ -383,14 +371,12 @@ This document describes the AWS infrastructure architecture for the AI Claims In
 
 **Recommended Schedule:**
 - Database maintenance: Monday 3:00-5:00 AM UTC
-- Redis maintenance: Monday 5:00-7:00 AM UTC
 - Application updates: Rolling, no downtime
 
 ## Backup Strategy
 
 **Automated Backups:**
 - RDS: Daily snapshots, 7-30 days retention
-- Redis: Snapshots every 5 minutes, 5 days retention
 - Terraform state: S3 with versioning
 
 **Manual Backups:**

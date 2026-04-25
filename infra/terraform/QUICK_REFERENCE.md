@@ -57,9 +57,6 @@ terraform output ecr_repository_url
 # Database Endpoint
 terraform output rds_endpoint
 
-# Redis Endpoint
-terraform output redis_endpoint
-
 # All outputs
 terraform output
 ```
@@ -115,14 +112,12 @@ export TF_VAR_environment=prod
 2. **Reduce Instance Sizes for Dev**
    ```hcl
    db_instance_class = "db.t4g.micro"
-   redis_node_type = "cache.t4g.micro"
    ecs_task_cpu = 512
    ecs_task_memory = 1024
    ```
 
 3. **Disable Multi-AZ for Dev**
    ```hcl
-   redis_num_cache_nodes = 1
    availability_zones_count = 2
    ```
 
@@ -178,11 +173,6 @@ LIMIT 10;
 -- Check connection count
 SELECT count(*) FROM pg_stat_activity;
 ```
-
-### Redis
-```bash
-# Connect to Redis
-redis-cli -h $(terraform output -raw redis_endpoint) -a $(aws secretsmanager get-secret-value --secret-id $(terraform output -raw redis_credentials_secret_arn) --query SecretString --output text | jq -r '.auth_token')
 
 # Check memory usage
 INFO memory

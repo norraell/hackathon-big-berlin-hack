@@ -8,7 +8,6 @@ The infrastructure includes:
 
 - **VPC Network**: Custom VPC with private Google access
 - **Cloud SQL PostgreSQL**: Managed PostgreSQL database
-- **Memorystore Redis**: Managed Redis for session state
 - **Cloud Run**: Serverless container platform
 - **Cloud Load Balancing**: Global load balancer with WebSocket support
 - **Secret Manager**: Secure credential storage
@@ -149,7 +148,6 @@ Configure your Twilio phone number:
 
 ### Database
 - **Cloud SQL PostgreSQL**: Managed PostgreSQL 16
-- **Memorystore Redis**: Managed Redis 7.x
 
 ### Networking
 - **VPC Network**: Custom network with private Google access
@@ -177,14 +175,12 @@ Configure your Twilio phone number:
 ### Development Environment (~$50-80/month)
 - Cloud Run: $10-20 (minimal traffic)
 - Cloud SQL (db-f1-micro): $7-10
-- Memorystore Redis (1GB): $25-30
 - Networking: $5-10
 - Logging/Monitoring: $5-10
 
 ### Production Environment (~$200-400/month)
 - Cloud Run: $50-100 (moderate traffic)
 - Cloud SQL (db-n1-standard-1): $50-80
-- Memorystore Redis (5GB, HA): $80-120
 - Load Balancer: $20-30
 - Networking: $20-40
 - Logging/Monitoring: $20-30

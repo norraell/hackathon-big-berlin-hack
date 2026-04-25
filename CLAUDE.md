@@ -29,7 +29,7 @@ FastAPI WebSocket server (this repo)
     │
     └─► Gradium TTS (WebSocket, streaming PCM)       # text → speech
     │
-    └─► Postgres + Redis                             # claims, sessions, call state
+    └─► Postgres                                     # claims, sessions, call state
 ```
 
 Note on the LLM: Using Google Gemini for both STT and LLM simplifies the architecture and reduces API dependencies. Gemini 1.5 Flash provides good latency for conversational AI.
@@ -44,7 +44,7 @@ Note on the LLM: Using Google Gemini for both STT and LLM simplifies the archite
 | STT | Google Gemini (`gemini-2.0-flash` or audio-capable model) | Multilingual, streaming |
 | LLM | Google Gemini (`gemini-1.5-flash`) | Fast response times, function calling support, same API as STT |
 | TTS | Gradium via official `gradium` Python SDK (`pip install gradium`) | Sub-300 ms time-to-first-audio, word-level timestamps for accurate barge-in, connection multiplexing across turns; SDK wraps the WebSocket protocol |
-| Storage | Postgres (claims, transcripts), Redis (live session state) | — |
+| Storage | Postgres (claims, transcripts, session state) | — |
 | Audio | `audioop` / `numpy` for μ-law ↔ PCM resampling | Twilio sends μ-law 8 kHz; STT/TTS expect 16 kHz PCM |
 
 ## 4. Repository layout
@@ -84,7 +84,7 @@ Note on the LLM: Using Google Gemini for both STT and LLM simplifies the archite
 │   └── fixtures/
 │       └── sample_calls/      # recorded μ-law fixtures for replay tests
 └── infra/
-    └── docker-compose.yml     # postgres, redis, app
+    └── docker-compose.yml     # postgres, app
 ```
 
 ## 5. Critical rules (do not violate)
@@ -148,7 +148,6 @@ GRADIUM_API_KEY=
 GRADIUM_VOICE_ID=              # default voice ID copied from Gradium Studio (like an ElevenLabs voice ID)
 # GRADIUM_ENDPOINT=            # optional, only set to override the SDK default (e.g. for staging)
 DATABASE_URL=postgresql+asyncpg://...
-REDIS_URL=redis://localhost:6379/0
 PUBLIC_BASE_URL=https://your-ngrok-or-prod-host  # Twilio webhook target
 DEFAULT_LANGUAGE=en
 SUPPORTED_LANGUAGES=en,de,es,fr,pt   # constrained to Gradium's TTS language set
@@ -162,7 +161,7 @@ LOG_LEVEL=INFO
 uv sync   # or: pip install -e .
 
 # 2. Start dependencies
-docker compose -f infra/docker-compose.yml up -d postgres redis
+docker compose -f infra/docker-compose.yml up -d postgres
 
 # 3. Run migrations
 alembic upgrade head

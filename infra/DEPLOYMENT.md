@@ -61,10 +61,6 @@ db_allocated_storage      = 100
 db_max_allocated_storage  = 500
 db_backup_retention_days  = 30
 
-# Redis - Production sizing
-redis_node_type       = "cache.r6g.large"
-redis_num_cache_nodes = 2  # Multi-AZ for HA
-
 # ECS - Production sizing
 ecs_task_cpu      = 2048  # 2 vCPU
 ecs_task_memory   = 4096  # 4 GB
@@ -121,7 +117,6 @@ make apply
 This will create:
 - VPC with public/private subnets across 3 AZs
 - RDS PostgreSQL database
-- ElastiCache Redis cluster
 - ECS Fargate cluster
 - Application Load Balancer
 - CloudWatch monitoring
@@ -194,7 +189,7 @@ make logs
 curl $(terraform output -raw application_url)/health
 
 # Expected response:
-# {"status": "healthy", "database": "connected", "redis": "connected"}
+# {"status": "healthy", "database": "connected"}
 ```
 
 ## Post-Deployment Configuration
@@ -307,7 +302,6 @@ make dashboard
 
 3. **Backup Verification**
    - Test database restore from backup
-   - Verify Redis snapshots
 
 4. **Rotate Secrets**
    ```bash

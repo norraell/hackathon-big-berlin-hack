@@ -85,7 +85,6 @@ resource "google_project_service" "apis" {
     "compute.googleapis.com",
     "servicenetworking.googleapis.com",
     "sqladmin.googleapis.com",
-    "redis.googleapis.com",
     "run.googleapis.com",
     "secretmanager.googleapis.com",
     "logging.googleapis.com",
@@ -204,26 +203,6 @@ resource "google_sql_user" "user" {
 }
 
 # ============================================================================
-# MEMORYSTORE REDIS
-# ============================================================================
-
-resource "google_redis_instance" "redis" {
-  name           = "${local.name_prefix}-redis"
-  tier           = var.environment == "prod" ? "STANDARD_HA" : "BASIC"
-  memory_size_gb = var.environment == "prod" ? 5 : 1
-  region         = var.gcp_region
-  redis_version  = "REDIS_7_0"
-
-  authorized_network = google_compute_network.vpc.id
-  connect_mode       = "PRIVATE_SERVICE_ACCESS"
-
-  auth_enabled = true
-  transit_encryption_mode = "SERVER_AUTHENTICATION"
-
-  depends_on = [google_project_service.apis]
-}
-
-# ============================================================================
 # SECRET MANAGER
 # ============================================================================
 
@@ -249,7 +228,6 @@ resource "google_secret_manager_secret_version" "app_secrets" {
     GRADIUM_API_KEY      = var.gradium_api_key
     SECRET_KEY           = var.secret_key
     DATABASE_URL         = "postgresql+asyncpg://claims_user:${random_password.db_password.result}@${google_sql_database_instance.postgres.private_ip_address}:5432/claims_db"
-    REDIS_URL            = "redis://:${google_redis_instance.redis.auth_string}@${google_redis_instance.redis.host}:${google_redis_instance.redis.port}/0"
     GRADIUM_TTS_VOICE_ID = "default_voice_id"
     GRADIUM_TTS_ENDPOINT = "wss://api.gradium.ai/api/speech/tts"
     DEFAULT_LANGUAGE     = "en"
@@ -358,8 +336,7 @@ resource "google_cloud_run_v2_service" "app" {
   depends_on = [
     google_project_service.apis,
     google_vpc_access_connector.connector,
-    google_sql_database_instance.postgres,
-    google_redis_instance.redis
+    google_sql_database_instance.postgres
   ]
 }
 
@@ -400,11 +377,6 @@ output "database_connection_name" {
 output "database_private_ip" {
   value       = google_sql_database_instance.postgres.private_ip_address
   description = "Database private IP"
-}
-
-output "redis_host" {
-  value       = google_redis_instance.redis.host
-  description = "Redis host"
 }
 
 output "vpc_connector_name" {

@@ -38,23 +38,6 @@ output "rds_credentials_secret_arn" {
   sensitive   = true
 }
 
-# Redis Outputs
-output "redis_endpoint" {
-  description = "Redis primary endpoint"
-  value       = aws_elasticache_replication_group.main.primary_endpoint_address
-}
-
-output "redis_port" {
-  description = "Redis port"
-  value       = aws_elasticache_replication_group.main.port
-}
-
-output "redis_credentials_secret_arn" {
-  description = "ARN of the secret containing Redis credentials"
-  value       = aws_secretsmanager_secret.redis_credentials.arn
-  sensitive   = true
-}
-
 # Load Balancer Outputs
 output "alb_dns_name" {
   description = "DNS name of the Application Load Balancer"
@@ -192,7 +175,6 @@ output "infrastructure_summary" {
     region              = var.aws_region
     vpc_id              = aws_vpc.main.id
     database_endpoint   = aws_db_instance.main.endpoint
-    redis_endpoint      = aws_elasticache_replication_group.main.primary_endpoint_address
     load_balancer_dns   = aws_lb.main.dns_name
     ecs_cluster         = aws_ecs_cluster.main.name
     ecr_repository      = aws_ecr_repository.app.repository_url

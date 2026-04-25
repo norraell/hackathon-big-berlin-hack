@@ -85,30 +85,6 @@ variable "db_backup_start_time" {
   default     = "03:00"
 }
 
-# Memorystore Redis Configuration
-variable "redis_memory_size_gb" {
-  description = "Redis memory size in GB"
-  type        = number
-  default     = 1
-}
-
-variable "redis_tier" {
-  description = "Redis tier (BASIC or STANDARD_HA)"
-  type        = string
-  default     = "BASIC"
-  
-  validation {
-    condition     = contains(["BASIC", "STANDARD_HA"], var.redis_tier)
-    error_message = "Redis tier must be BASIC or STANDARD_HA."
-  }
-}
-
-variable "redis_version" {
-  description = "Redis version"
-  type        = string
-  default     = "REDIS_7_0"
-}
-
 # Cloud Run Configuration
 variable "cloud_run_cpu" {
   description = "CPU allocation for Cloud Run (1000m = 1 vCPU)"

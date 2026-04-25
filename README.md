@@ -31,7 +31,6 @@ See [`architecture.md`](architecture.md) for detailed architecture documentation
 
 - Python 3.11+
 - PostgreSQL 14+
-- Redis 7+
 - Twilio account with phone number
 - API keys for:
   - Google Gemini (for STT and LLM)
@@ -71,7 +70,7 @@ cp .env.example .env
 ### 5. Start infrastructure
 
 ```bash
-docker compose -f infra/docker-compose.yml up -d postgres redis
+docker compose -f infra/docker-compose.yml up -d postgres
 ```
 
 ### 6. Run database migrations
@@ -114,7 +113,6 @@ Key configurations:
 - `GEMINI_API_KEY`: Google Gemini API key (for STT and LLM)
 - `GRADIUM_API_KEY`: Gradium TTS API key
 - `DATABASE_URL`: PostgreSQL connection string
-- `REDIS_URL`: Redis connection string
 - `SUPPORTED_LANGUAGES`: Comma-separated language codes
 
 ## Testing
@@ -244,7 +242,6 @@ make db-migrate
 The GCP Terraform configuration includes:
 - **VPC Network** with private Google access
 - **Cloud SQL PostgreSQL** with automated backups
-- **Memorystore Redis** for session management
 - **Cloud Run** for serverless container hosting
 - **Secret Manager** for credential management
 - **Cloud Monitoring** and logging
@@ -284,7 +281,6 @@ make logs
 The Terraform configuration includes:
 - **VPC** with multi-AZ setup
 - **RDS PostgreSQL** with automated backups
-- **ElastiCache Redis** for session management
 - **ECS Fargate** for containerized application
 - **Application Load Balancer** with WebSocket support
 - **CloudWatch** monitoring and alerting

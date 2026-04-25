@@ -34,12 +34,6 @@ class Settings(BaseSettings):
     # Database Configuration
     database_url: str = Field(..., description="PostgreSQL database URL")
 
-    # Redis Configuration
-    redis_url: str = Field(
-        default="redis://localhost:6379/0",
-        description="Redis connection URL",
-    )
-
     # Application Configuration
     public_base_url: str = Field(..., description="Public base URL for webhooks")
     default_language: str = Field(default="en", description="Default language code")

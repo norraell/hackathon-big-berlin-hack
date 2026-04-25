@@ -1,4 +1,8 @@
-version: '3.8'
+# Podman-compatible docker-compose file with ngrok for Twilio integration
+# Usage: podman-compose -f docker-compose.podman.yml up
+#
+# This setup exposes the local application via ngrok so Twilio can send
+# webhooks to your local machine for testing phone calls.
 
 services:
   postgres:
@@ -36,5 +40,27 @@ services:
       - ../app:/app/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: claims-ngrok
+    restart: unless-stopped
+    command:
+      - "http"
+      - "app:8000"
+      - "--log=stdout"
+    ports:
+      - "4040:4040"  # ngrok web interface
+    environment:
+      # Set your ngrok auth token here or via .env file
+      # Get your token from: https://dashboard.ngrok.com/get-started/your-authtoken
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN:-}
+    depends_on:
+      - app
+
 volumes:
   postgres_data:
+
+# Podman-specific network configuration
+networks:
+  default:
+    driver: bridge

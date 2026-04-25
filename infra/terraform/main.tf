@@ -67,7 +67,6 @@ resource "google_project_service" "required_apis" {
     "compute.googleapis.com",
     "servicenetworking.googleapis.com",
     "sqladmin.googleapis.com",
-    "redis.googleapis.com",
     "run.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "secretmanager.googleapis.com",
