@@ -3,6 +3,7 @@
 import asyncio
 import logging
 from typing import AsyncGenerator, Optional, Callable
+from contextlib import asynccontextmanager
 
 from app.config import settings
 
@@ -41,7 +42,8 @@ class GeminiSTTHandler:
         
         # Gemini client (to be initialized)
         self.client = None
-        self.stream = None
+        self._session = None
+        self._session_ctx = None
         
         # Transcription state
         self.current_transcript = ""
@@ -56,10 +58,67 @@ class GeminiSTTHandler:
         logger.info("Starting Gemini STT stream")
         
         try:
-            # TODO: Initialize Gemini client
-            # import google.generativeai as genai
-            # genai.configure(api_key=settings.gemini_api_key)
-            # self.client = genai.GenerativeModel('gemini-2.0-flash')
+            # Import and configure Gemini
+            try:
+                from google import genai
+                from google.genai import types
+            except ImportError as e:
+                logger.error(f"Failed to import google.genai: {e}")
+                raise RuntimeError(
+                    "google-generativeai package not properly installed. "
+                    "Please ensure you have the correct version installed."
+                ) from e
+            
+            # Configure the client
+            try:
+                self.client = genai.Client(api_key=settings.gemini_api_key)
+            except Exception as e:
+                logger.error(f"Failed to create Gemini client: {e}")
+                raise RuntimeError(
+                    f"Failed to initialize Gemini client. Check your API key. Error: {e}"
+                ) from e
+            
+            # Configure live session with proper error handling
+            try:
+                config = types.LiveConnectConfig(
+                    response_modalities=["AUDIO"],
+                    speech_config=types.SpeechConfig(
+                        voice_config=types.VoiceConfig(
+                            prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                                voice_name="Puck"
+                            )
+                        )
+                    ),
+                )
+                
+                # Create session context
+                self._session_ctx = self.client.aio.live.connect(
+                    model="models/gemini-2.0-flash-exp",
+                    config=config
+                )
+                
+                # Enter the context to get the session
+                self._session = await self._session_ctx.__aenter__()
+                
+            except Exception as e:
+                logger.error(f"Failed to create Gemini Live session: {e}", exc_info=True)
+                
+                # Check for common error causes
+                error_msg = str(e)
+                if "1011" in error_msg or "Internal error" in error_msg:
+                    raise RuntimeError(
+                        "Gemini Live API returned internal error (1011). This may be due to:\n"
+                        "1. API not available in your region\n"
+                        "2. Invalid API key or insufficient permissions\n"
+                        "3. Model 'gemini-2.0-flash-exp' not accessible\n"
+                        "4. Live API not enabled for your account\n"
+                        "Please check your Gemini API configuration and try:\n"
+                        "- Verifying your API key at https://aistudio.google.com/apikey\n"
+                        "- Ensuring Live API access is enabled\n"
+                        "- Trying a different model if available"
+                    ) from e
+                else:
+                    raise RuntimeError(f"Failed to connect to Gemini Live API: {e}") from e
             
             self.is_streaming = True
             
@@ -70,32 +129,42 @@ class GeminiSTTHandler:
             # Store tasks for cleanup
             self.tasks = [send_task, receive_task]
             
-            logger.info("Gemini STT stream started")
+            logger.info("Gemini STT stream started successfully")
             
         except Exception as e:
             logger.error(f"Error starting Gemini STT: {e}", exc_info=True)
+            # Clean up on error
+            await self._cleanup()
             raise
 
-    async def stop(self) -> None:
-        """Stop the STT streaming session."""
-        logger.info("Stopping Gemini STT stream")
-        
+    async def _cleanup(self) -> None:
+        """Clean up resources."""
         self.is_streaming = False
         
         # Cancel tasks
         if hasattr(self, 'tasks'):
             for task in self.tasks:
-                task.cancel()
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
+                if not task.done():
+                    task.cancel()
+                    try:
+                        await task
+                    except asyncio.CancelledError:
+                        pass
         
-        # Close stream
-        if self.stream:
-            # TODO: Close Gemini stream
-            pass
-        
+        # Close session
+        if self._session_ctx is not None:
+            try:
+                await self._session_ctx.__aexit__(None, None, None)
+            except Exception as e:
+                logger.warning(f"Error closing Gemini session: {e}")
+            finally:
+                self._session = None
+                self._session_ctx = None
+
+    async def stop(self) -> None:
+        """Stop the STT streaming session."""
+        logger.info("Stopping Gemini STT stream")
+        await self._cleanup()
         logger.info("Gemini STT stream stopped")
 
     async def send_audio(self, audio_chunk: bytes) -> None:
@@ -113,50 +182,89 @@ class GeminiSTTHandler:
     async def _send_audio(self) -> None:
         """Internal task to send audio from queue to Gemini."""
         try:
-            while self.is_streaming:
-                audio_chunk = await self.audio_queue.get()
-                
-                # TODO: Send audio to Gemini stream
-                # await self.stream.send(audio_chunk)
-                
-                logger.debug(f"Sent {len(audio_chunk)} bytes to Gemini STT")
-                
+            while self.is_streaming and self._session:
+                try:
+                    audio_chunk = await asyncio.wait_for(
+                        self.audio_queue.get(),
+                        timeout=1.0
+                    )
+                    
+                    # Send audio to Gemini session
+                    await self._session.send(audio_chunk)
+                    logger.debug(f"Sent {len(audio_chunk)} bytes to Gemini STT")
+                    
+                except asyncio.TimeoutError:
+                    # No audio in queue, continue
+                    continue
+                    
         except asyncio.CancelledError:
             logger.info("Audio sending task cancelled")
         except Exception as e:
             logger.error(f"Error sending audio to Gemini: {e}", exc_info=True)
+            self.is_streaming = False
 
     async def _receive_transcripts(self) -> None:
         """Internal task to receive transcripts from Gemini."""
         try:
-            while self.is_streaming:
-                # TODO: Receive from Gemini stream
-                # async for response in self.stream:
-                #     await self._process_response(response)
+            if not self._session:
+                logger.error("No active session for receiving transcripts")
+                return
                 
-                # Placeholder: simulate receiving transcripts
-                await asyncio.sleep(0.1)
+            async for response in self._session.receive():
+                if not self.is_streaming:
+                    break
+                    
+                # Process the response
+                await self._process_gemini_response(response)
                 
         except asyncio.CancelledError:
             logger.info("Transcript receiving task cancelled")
         except Exception as e:
             logger.error(f"Error receiving transcripts from Gemini: {e}", exc_info=True)
+            self.is_streaming = False
 
-    async def _process_response(self, response: dict) -> None:
-        """Process a transcription response from Gemini.
+    async def _process_gemini_response(self, response) -> None:
+        """Process a transcription response from Gemini Live API.
         
         Args:
-            response: Response from Gemini STT
+            response: Response from Gemini Live API
         """
-        # TODO: Parse actual Gemini response format
-        # This is a placeholder structure
-        
-        is_final = response.get("is_final", False)
-        transcript = response.get("transcript", "")
-        confidence = response.get("confidence", 0.0)
-        language = response.get("language", self.language)
-        
-        if not transcript:
+        try:
+            # Extract transcript from Gemini Live response
+            # The response structure may vary, so we handle it carefully
+            transcript = ""
+            is_final = False
+            confidence = 0.8  # Default confidence
+            language = self.language
+            
+            # Check if response has server_content
+            if hasattr(response, 'server_content'):
+                server_content = response.server_content
+                
+                # Check for turn_complete (indicates final transcript)
+                if hasattr(server_content, 'turn_complete'):
+                    is_final = server_content.turn_complete
+                
+                # Extract text from model_turn
+                if hasattr(server_content, 'model_turn'):
+                    model_turn = server_content.model_turn
+                    if hasattr(model_turn, 'parts'):
+                        for part in model_turn.parts:
+                            if hasattr(part, 'text'):
+                                transcript += part.text
+            
+            # Also check for text in response directly
+            elif hasattr(response, 'text'):
+                transcript = response.text
+                is_final = getattr(response, 'is_final', False)
+            
+            # Log the raw response for debugging
+            logger.debug(f"Gemini response type: {type(response)}, has text: {bool(transcript)}")
+            
+            if not transcript:
+                return
+        except Exception as e:
+            logger.error(f"Error parsing Gemini response: {e}", exc_info=True)
             return
         
         # Update detected language
