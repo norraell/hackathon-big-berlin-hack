@@ -6,7 +6,7 @@
 Twilio Voice (phone number) ── Media Streams (bidirectional WebSocket, μ-law 8 kHz)
 │
 ▼
-FastAPI WebSocket server (this repo)
+FastAPI WebSocket server (this repo) ── Direct public IP (POC setup)
 │
 ├─► Gemini STT (streaming, multilingual)          # speech → text
 │
@@ -16,6 +16,8 @@ FastAPI WebSocket server (this repo)
     │
     └─► Postgres                                   # claims, sessions, call state
 ```
+
+**Note:** This is a POC setup with direct public IP access to ECS tasks. For production, consider adding a load balancer.
 
 **Note on the LLM:** Using Google Gemini for both STT and LLM simplifies the architecture and reduces API dependencies. Gemini 1.5 Flash provides good latency for conversational AI.
 
