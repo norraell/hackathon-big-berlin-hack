@@ -6,7 +6,7 @@ export function generateSpeech(text) {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket("wss://eu.api.gradium.ai/api/speech/tts", {
       headers: {
-        "x-api-key": "YOUR_GRADIUM_API_KEY"
+        "x-api-key": "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
       }
     });
 
@@ -16,14 +16,21 @@ export function generateSpeech(text) {
       console.log("Connected to Gradium");
 
       ws.send(JSON.stringify({
-        text,
+        type: "speak",
+        text: text,
         voice_id: "7c5U0Km7AiBgJADg",
-        sample_rate: 48000
+        output_format: "wav",
+        sample_rate: 48000,
+        json_config: {
+          speed: 1.0,
+          temp: 0.6
+        }
       }));
     });
 
     ws.on("message", (data) => {
       console.log("Received message from Gradium");
+      console.log("Raw message:", data.toString());
 
       const message = JSON.parse(data.toString());
 
