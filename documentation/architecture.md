@@ -8,7 +8,7 @@ Twilio Voice (phone number) ── Media Streams (bidirectional WebSocket, μ-la
 ▼
 FastAPI WebSocket server (this repo) ── Direct public IP (POC setup)
 │
-├─► Gemini STT (streaming, multilingual)          # speech → text
+├─► Google Gemini STT (streaming, multilingual)    # speech → text
 │
 ├─► Google Gemini LLM (gemini-1.5-flash)  # dialog policy + tool calls
 │
@@ -19,7 +19,7 @@ FastAPI WebSocket server (this repo) ── Direct public IP (POC setup)
 
 **Note:** This is a POC setup with direct public IP access to ECS tasks. For production, consider adding a load balancer.
 
-**Note on the LLM:** Using Google Gemini for both STT and LLM simplifies the architecture and reduces API dependencies. Gemini 1.5 Flash provides good latency for conversational AI.
+**Note on the Stack:** Google Gemini powers both the STT and LLM layers, keeping the stack unified within Google's ecosystem.
 
 ## 2. Tech Stack
 
@@ -28,8 +28,8 @@ FastAPI WebSocket server (this repo) ── Direct public IP (POC setup)
 | Runtime    | Python 3.11+                                                                | Best ecosystem for STT/TTS SDKs                                                                                                        |
 | Web        | FastAPI + Uvicorn                                                           | Native async, WebSocket support for Twilio Media Streams                                                                               |
 | Telephony  | Twilio Programmable Voice + Media Streams                                   | Inbound PSTN, bidirectional audio                                                                                                      |
-| STT        | Google Gemini (`gemini-2.0-flash` or audio-capable model)                  | Multilingual, streaming                                                                                                                |
-| LLM        | Google Gemini (`gemini-1.5-flash`)                                         | Fast response times, function calling support, same API as STT                                                                         |
+| STT        | Google Gemini (Live API)                                                   | Multilingual, streaming, integrated with Gemini ecosystem                                                                              |
+| LLM        | Google Gemini (`gemini-1.5-flash`)                                         | Fast response times, function calling support                                                                                          |
 | TTS        | Gradium (WebSocket streaming, `wss://api.gradium.ai/api/speech/tts`)       | Sub-300 ms time-to-first-audio, word-level timestamps for accurate barge-in, connection multiplexing across turns                     |
 | Storage    | Postgres (claims, transcripts, session state)                               | —                                                                                                                                      |
 | Audio      | audioop / numpy for μ-law ↔ PCM resampling                                 | Twilio sends μ-law 8 kHz; STT/TTS expect 16 kHz PCM                                                                                   |
@@ -49,7 +49,9 @@ FastAPI WebSocket server (this repo) ── Direct public IP (POC setup)
 │   │   ├── twilio_handler.py    # incoming call webhook, TwiML generation
 │   │   └── media_stream.py      # WS handler: decodes μ-law, fans out audio
 │   ├── stt/
-│   │   └── gemini_stt.py        # streaming Gemini STT wrapper
+│   │   ├── __init__.py          # STT factory/protocol
+│   │   ├── gemini_stt.py        # Gemini STT wrapper (default)
+│   │   └── google_cloud_stt.py  # Google Cloud STT wrapper (optional, requires separate credentials)
 │   ├── llm/
 │   │   ├── client.py            # Gemini client, streaming completions
 │   │   ├── prompts.py           # system prompt, language-specific snippets
@@ -124,7 +126,7 @@ Gradium is a streaming WebSocket TTS. Specifics that matter for this backend:
 
 **Voice selection per language:** Maintain a `LANGUAGE_VOICE_MAP: dict[str, str]` in config. When the session language changes mid-call, tear down and re-open the WS with the new `voice_id` (Gradium's setup is one-shot per connection).
 
-**Latency target:** Gradium quotes ~258 ms p50 TTFA, ~214 ms with multiplexing. Combined with Gemini LLM streaming and Gemini STT, we have headroom under the 1500 ms p95 budget — but only if we stream end-to-end. Never buffer a full LLM response before starting TTS; pipe LLM tokens into Gradium as they arrive.
+**Latency target:** Gradium quotes ~258 ms p50 TTFA, ~214 ms with multiplexing. Combined with Gemini LLM streaming and Google Cloud STT, we have headroom under the 1500 ms p95 budget — but only if we stream end-to-end. Never buffer a full LLM response before starting TTS; pipe LLM tokens into Gradium as they arrive.
 
 **Pronunciation:** Gradium supports a custom pronunciation dictionary and `rewrite_rules` for dates/times/numbers/codes. Enable rewrite rules for the active language, and add the claim ID format to a custom pronunciation entry once the format is finalized — readback accuracy of claim IDs is critical.
 

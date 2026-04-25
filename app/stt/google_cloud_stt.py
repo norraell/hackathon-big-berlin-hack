@@ -63,6 +63,26 @@ class GoogleCloudSTTHandler:
         logger.info("Starting Google Cloud STT stream")
         
         try:
+            # Check if credentials are configured
+            import os
+            credentials_path = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
+            
+            if not credentials_path:
+                logger.error("GOOGLE_APPLICATION_CREDENTIALS environment variable not set")
+                raise RuntimeError(
+                    "Google Cloud STT requires GOOGLE_APPLICATION_CREDENTIALS to be set. "
+                    "Please set it to the path of your service account JSON key file. "
+                    "See documentation/GOOGLE_CLOUD_STT_SETUP.md for setup instructions."
+                )
+            
+            if not os.path.exists(credentials_path):
+                logger.error(f"Credentials file not found: {credentials_path}")
+                raise RuntimeError(
+                    f"Google Cloud credentials file not found: {credentials_path}. "
+                    f"Please ensure the file exists or update GOOGLE_APPLICATION_CREDENTIALS. "
+                    f"See documentation/GOOGLE_CLOUD_STT_SETUP.md for setup instructions."
+                )
+            
             # Import Google Cloud Speech
             try:
                 from google.cloud import speech_v1p1beta1 as speech
@@ -80,8 +100,9 @@ class GoogleCloudSTTHandler:
             except Exception as e:
                 logger.error(f"Failed to create Speech client: {e}")
                 raise RuntimeError(
-                    f"Failed to initialize Google Cloud Speech client. "
-                    f"Ensure GOOGLE_APPLICATION_CREDENTIALS is set. Error: {e}"
+                    f"Failed to initialize Google Cloud Speech client: {e}. "
+                    f"Please verify your credentials file is valid. "
+                    f"See documentation/GOOGLE_CLOUD_STT_SETUP.md for troubleshooting."
                 ) from e
             
             # Configure streaming recognition

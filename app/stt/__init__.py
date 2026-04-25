@@ -1,60 +1,42 @@
-"""Speech-to-Text module with support for multiple providers."""
+"""Speech-to-Text module."""
 
-from typing import Optional, Callable
-from app.config import settings
 import logging
+from typing import Callable, Optional, Protocol
+
+from app.config import settings
+from app.stt.gemini_stt import GeminiSTTHandler
+from app.stt.google_cloud_stt import GoogleCloudSTTHandler
 
 logger = logging.getLogger(__name__)
+
+
+class STTHandler(Protocol):
+    """Protocol for supported STT handlers."""
+
+    is_streaming: bool
+
+    async def start(self) -> None: ...
+    async def stop(self) -> None: ...
+    async def send_audio(self, audio_chunk: bytes) -> None: ...
 
 
 def get_stt_handler(
     language: Optional[str] = None,
     on_transcript: Optional[Callable[[str, float, str], None]] = None,
     on_final: Optional[Callable[[str, float, str], None]] = None,
-):
-    """Factory function to get the appropriate STT handler based on configuration.
-    
-    Args:
-        language: Target language code (None for auto-detect)
-        on_transcript: Callback for interim transcripts (text, confidence, language)
-        on_final: Callback for final transcripts (text, confidence, language)
-        
-    Returns:
-        STT handler instance (GeminiSTTHandler or GoogleCloudSTTHandler)
-        
-    Raises:
-        ValueError: If unknown STT provider is configured
-        RuntimeError: If the selected provider is not available
-    """
+) -> STTHandler:
+    """Factory function to get the configured STT handler."""
     provider = settings.stt_provider.lower()
     
     if provider == "gemini":
-        try:
-            from app.stt.gemini_stt import GeminiSTTHandler
-            logger.info("Using Gemini STT provider")
-            return GeminiSTTHandler(language, on_transcript, on_final)
-        except ImportError as e:
-            raise RuntimeError(
-                f"Gemini STT provider not available: {e}. "
-                "Install with: pip install google-genai"
-            ) from e
-            
+        logger.info("Using Gemini STT provider")
+        return GeminiSTTHandler(language, on_transcript, on_final)
     elif provider == "google_cloud":
-        try:
-            from app.stt.google_cloud_stt import GoogleCloudSTTHandler
-            logger.info("Using Google Cloud STT provider")
-            return GoogleCloudSTTHandler(language, on_transcript, on_final)
-        except ImportError as e:
-            raise RuntimeError(
-                f"Google Cloud STT provider not available: {e}. "
-                "Install with: pip install google-cloud-speech"
-            ) from e
-            
+        logger.info("Using Google Cloud STT provider")
+        return GoogleCloudSTTHandler(language, on_transcript, on_final)
     else:
-        raise ValueError(
-            f"Unknown STT provider: {provider}. "
-            f"Valid options: 'gemini', 'google_cloud'"
-        )
+        logger.warning(f"Unknown STT provider '{provider}', defaulting to Gemini")
+        return GeminiSTTHandler(language, on_transcript, on_final)
 
 
-__all__ = ["get_stt_handler"]
+__all__ = ["GeminiSTTHandler", "GoogleCloudSTTHandler", "STTHandler", "get_stt_handler"]

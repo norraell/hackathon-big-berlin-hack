@@ -18,7 +18,8 @@ This guide covers deploying the AI Claims Intake System to production using Terr
 
 - [ ] AWS Account with admin access
 - [ ] Twilio account with phone number
-- [ ] Google Gemini API key (for STT and LLM)
+- [ ] Google Gemini API key (for LLM)
+- [ ] Google Cloud Speech-to-Text credentials
 - [ ] Gradium API key (for TTS)
 
 ### Required Tools

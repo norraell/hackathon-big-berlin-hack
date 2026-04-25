@@ -43,10 +43,10 @@ class Settings(BaseSettings):
     )
     log_level: str = Field(default="INFO", description="Logging level")
     
-    # STT Provider Configuration
+    # STT Configuration
     stt_provider: str = Field(
-        default="google_cloud",
-        description="STT provider: 'gemini' (requires Live API access) or 'google_cloud' (production-ready)"
+        default="gemini",
+        description="STT provider: 'gemini' (default, uses Gemini API) or 'google_cloud' (requires separate credentials)"
     )
 
     # Security
