@@ -149,6 +149,23 @@ TOOLS: list[dict[str, Any]] = [
 ]
 
 
+def convert_tools_to_gemini_format() -> list[dict[str, Any]]:
+    """Convert OpenAI-style tools to Gemini function declarations.
+    
+    Returns:
+        List of Gemini function declarations
+    """
+    gemini_tools = []
+    for tool in TOOLS:
+        function = tool["function"]
+        gemini_tools.append({
+            "name": function["name"],
+            "description": function["description"],
+            "parameters": function["parameters"],
+        })
+    return gemini_tools
+
+
 def get_tool_by_name(tool_name: str) -> dict[str, Any] | None:
     """Get a tool definition by name.
     

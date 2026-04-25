@@ -9,7 +9,7 @@ import google.generativeai as genai
 
 from app.config import settings
 from app.llm.prompts import get_system_prompt
-from app.llm.tools import TOOLS, validate_tool_call
+from app.llm.tools import TOOLS, validate_tool_call, convert_tools_to_gemini_format
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +55,9 @@ class GeminiLLMClient:
         self.current_response = ""
         self.is_streaming = False
         
+        # Cache for generation configs
+        self._generation_configs: dict[tuple[int, float], genai.GenerationConfig] = {}
+        
         logger.info(f"GeminiLLMClient initialized with language: {language}")
 
     async def initialize(self) -> None:
@@ -63,10 +66,12 @@ class GeminiLLMClient:
             # Configure Gemini API
             genai.configure(api_key=settings.gemini_api_key)
             
-            # Initialize model with system instruction
+            # Initialize model with system instruction and tools
+            gemini_tools = convert_tools_to_gemini_format()
             self.model = genai.GenerativeModel(
                 model_name="gemini-1.5-flash",
                 system_instruction=self.system_prompt,
+                tools=gemini_tools,
             )
             
             # Start chat session
@@ -123,6 +128,69 @@ class GeminiLLMClient:
         })
         logger.info(f"Added tool result for {tool_name}")
 
+    def _get_last_user_message(self) -> Optional[str]:
+        """Extract the last user message from conversation history.
+        
+        Returns:
+            The last user message content, or None if not found
+        """
+        for msg in reversed(self.messages):
+            if msg["role"] == "user":
+                return msg["content"]
+        return None
+
+    def _extract_tool_calls(self, response) -> Optional[list[dict[str, Any]]]:
+        """Extract tool calls from Gemini response.
+        
+        Args:
+            response: Gemini API response object
+            
+        Returns:
+            List of tool call dictionaries, or None if no tool calls found
+        """
+        if not (hasattr(response, 'candidates') and response.candidates):
+            return None
+        
+        candidate = response.candidates[0]
+        if not (hasattr(candidate, 'content') and hasattr(candidate.content, 'parts')):
+            return None
+        
+        tool_calls = [
+            {
+                "id": f"call_{idx}",
+                "function": {
+                    "name": part.function_call.name,
+                    "arguments": json.dumps(dict(part.function_call.args)),
+                }
+            }
+            for idx, part in enumerate(candidate.content.parts)
+            if hasattr(part, 'function_call')
+        ]
+        
+        return tool_calls if tool_calls else None
+
+    def _get_generation_config(
+        self,
+        max_tokens: int,
+        temperature: float,
+    ) -> genai.GenerationConfig:
+        """Get or create a cached generation config.
+        
+        Args:
+            max_tokens: Maximum tokens to generate
+            temperature: Sampling temperature
+            
+        Returns:
+            Cached or new GenerationConfig instance
+        """
+        key = (max_tokens, temperature)
+        if key not in self._generation_configs:
+            self._generation_configs[key] = genai.GenerationConfig(
+                max_output_tokens=max_tokens,
+                temperature=temperature,
+            )
+        return self._generation_configs[key]
+
     async def stream_completion(
         self,
         max_tokens: int = 150,
@@ -147,30 +215,18 @@ class GeminiLLMClient:
         self.current_response = ""
         
         try:
-            # Get the last user message
-            last_message = None
-            for msg in reversed(self.messages):
-                if msg["role"] == "user":
-                    last_message = msg["content"]
-                    break
-            
+            last_message = self._get_last_user_message()
             if not last_message:
                 logger.warning("No user message found for streaming")
                 return
             
             logger.info("Starting LLM completion stream")
             
-            # Configure generation
-            generation_config = genai.GenerationConfig(
-                max_output_tokens=max_tokens,
-                temperature=temperature,
-            )
-            
             # Stream response from Gemini
             response = await asyncio.to_thread(
                 self.chat.send_message,
                 last_message,
-                generation_config=generation_config,
+                generation_config=self._get_generation_config(max_tokens, temperature),
                 stream=True,
             )
             
@@ -217,52 +273,23 @@ class GeminiLLMClient:
             await self.initialize()
         
         try:
-            # Get the last user message
-            last_message = None
-            for msg in reversed(self.messages):
-                if msg["role"] == "user":
-                    last_message = msg["content"]
-                    break
-            
+            last_message = self._get_last_user_message()
             if not last_message:
                 logger.warning("No user message found for completion")
                 return None, None
             
             logger.info("Getting LLM completion with tools")
             
-            # Configure generation
-            generation_config = genai.GenerationConfig(
-                max_output_tokens=max_tokens,
-                temperature=temperature,
-            )
-            
             # Get response from Gemini (non-streaming for tool calls)
             response = await asyncio.to_thread(
                 self.chat.send_message,
                 last_message,
-                generation_config=generation_config,
+                generation_config=self._get_generation_config(max_tokens, temperature),
             )
             
-            # Extract text response
+            # Extract text and tool calls
             response_text = response.text if response.text else None
-            
-            # Check for function calls (Gemini's tool calling)
-            tool_calls = None
-            if hasattr(response, 'candidates') and response.candidates:
-                candidate = response.candidates[0]
-                if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
-                    for part in candidate.content.parts:
-                        if hasattr(part, 'function_call'):
-                            # Convert Gemini function call to our format
-                            if tool_calls is None:
-                                tool_calls = []
-                            tool_calls.append({
-                                "id": f"call_{len(tool_calls)}",
-                                "function": {
-                                    "name": part.function_call.name,
-                                    "arguments": json.dumps(dict(part.function_call.args)),
-                                }
-                            })
+            tool_calls = self._extract_tool_calls(response)
             
             # Add to history
             if response_text:
@@ -272,6 +299,7 @@ class GeminiLLMClient:
             
         except Exception as e:
             logger.error(f"Error getting completion with tools: {e}", exc_info=True)
+            return None, None
             raise
 
     async def process_tool_calls(
