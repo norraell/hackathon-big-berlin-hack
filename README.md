@@ -269,25 +269,6 @@ The GCP Terraform configuration includes:
 - Development: ~$50-80/month
 - Production: ~$200-400/month
 
-#### Amazon Web Services (AWS) - Alternative
-
-For AWS deployment, see:
-
-- **[Deployment Guide](infra/DEPLOYMENT.md)** - Step-by-step deployment instructions
-
-**Note:** AWS Terraform configuration is not yet implemented. You can:
-1. Use the GCP Terraform configuration as a reference
-2. Deploy manually following the deployment guide
-3. Contribute AWS Terraform configuration to the project
-
-For manual AWS deployment, the infrastructure should include:
-- **VPC** with multi-AZ setup
-- **RDS PostgreSQL** with automated backups
-- **ECS Fargate** or **App Runner** for containerized application
-- **Application Load Balancer** with WebSocket support
-- **CloudWatch** monitoring and alerting
-- **Secrets Manager** for credential management
-
 ### Local Development Deployment
 
 For local development, use Docker Compose:
