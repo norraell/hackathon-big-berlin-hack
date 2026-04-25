@@ -13,7 +13,7 @@ if [ ! -f .env ]; then
     echo "✅ Created .env file. Please edit it with your credentials:"
     echo "   - NGROK_AUTHTOKEN (get from https://dashboard.ngrok.com/get-started/your-authtoken)"
     echo "   - TWILIO_ACCOUNT_SID"
-    echo "   - TWILIO_AUTH_TOKEN"
+    echo "   - TWILIO_API_KEY_SID"
     echo "   - GEMINI_API_KEY"
     echo "   - GRADIUM_API_KEY"
     echo ""

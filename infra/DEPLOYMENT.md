@@ -82,7 +82,7 @@ enable_enhanced_monitoring = true
 
 # Credentials (use environment variables or secrets manager)
 twilio_account_sid  = "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-twilio_auth_token   = "your_secure_token"
+twilio_api_key_sid   = "your_secure_token"
 twilio_phone_number = "+1234567890"
 gemini_api_key      = "your_gemini_key"
 gradium_api_key     = "your_gradium_key"

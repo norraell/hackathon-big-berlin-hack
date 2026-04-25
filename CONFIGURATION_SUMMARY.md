@@ -46,7 +46,7 @@
    
    Required values:
    - `TWILIO_ACCOUNT_SID` - From https://console.twilio.com
-   - `TWILIO_AUTH_TOKEN` - From https://console.twilio.com
+   - `TWILIO_API_KEY_SID` - From https://console.twilio.com
    - `TWILIO_PHONE_NUMBER` - Your Twilio phone number
    - `GEMINI_API_KEY` - From https://aistudio.google.com/app/apikey
    - `GRADIUM_API_KEY` - From Gradium dashboard

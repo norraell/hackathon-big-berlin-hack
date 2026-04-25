@@ -18,7 +18,7 @@ You need to configure the following in your `.env` file:
 ```bash
 # Twilio (for phone calls)
 TWILIO_ACCOUNT_SID=your_account_sid_here          # Get from https://console.twilio.com
-TWILIO_AUTH_TOKEN=your_auth_token_here            # Get from https://console.twilio.com
+TWILIO_API_KEY_SID=your_api_key_here            # Get from https://console.twilio.com
 TWILIO_PHONE_NUMBER=+1234567890                   # Your Twilio phone number
 
 # AI Services

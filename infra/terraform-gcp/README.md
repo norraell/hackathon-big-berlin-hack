@@ -57,7 +57,7 @@ environment    = "dev"
 
 # Required: Twilio Credentials
 twilio_account_sid  = "your_actual_sid"
-twilio_auth_token   = "your_actual_token"
+twilio_api_key_sid  = "your_actual_token"
 twilio_phone_number = "+1234567890"
 
 # Required: AI Service API Keys
