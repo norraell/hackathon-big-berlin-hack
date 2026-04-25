@@ -2,6 +2,11 @@
 
 An AI-powered phone claims intake system using Twilio, Google Cloud STT, Gemini LLM, and Gradium TTS.
 
+> **⚠️ IMPORTANT: Google Gemini API Migration**
+>
+> This project has been migrated from the deprecated `google.generativeai` package to the new `google.genai` package.
+> If you're updating from an older version, please see [`documentation/GOOGLE_GENAI_MIGRATION.md`](documentation/GOOGLE_GENAI_MIGRATION.md) for migration details.
+
 ## Overview
 
 This system provides an automated phone-based claims intake service that:
@@ -33,7 +38,7 @@ See [`architecture.md`](architecture.md) for detailed architecture documentation
 - PostgreSQL 14+
 - Twilio account with phone number
 - API keys for:
-  - Google Gemini (for LLM and STT)
+  - Google Gemini (for LLM and STT) - **Note:** Requires `google-genai` package (v0.3.0+)
   - Gradium (for TTS)
 
 ## Installation
@@ -55,10 +60,12 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 ### 3. Install dependencies
 
 ```bash
-pip install -e .
+pip install -r requirements.txt
 # Or for development:
 pip install -e ".[dev]"
 ```
+
+**Note:** The project now uses `google-genai` (v0.3.0+) instead of the deprecated `google-generativeai` package.
 
 ### 4. Set up environment variables
 

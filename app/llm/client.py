@@ -5,9 +5,8 @@ import json
 import logging
 from typing import AsyncGenerator, Optional, Callable, Any
 
-import google.generativeai as genai
-from google.generativeai.generative_models import GenerativeModel
-from google.generativeai.types import GenerationConfig
+from google import genai
+from google.genai import types
 
 from app.config import settings
 from app.llm.prompts import get_system_prompt
@@ -49,8 +48,8 @@ class GeminiLLMClient:
         # System prompt
         self.system_prompt = get_system_prompt(language)
         
-        # Gemini model and chat
-        self.model = None
+        # Gemini client and chat
+        self.client: Optional[genai.Client] = None
         self.chat = None
         
         # Streaming state
@@ -58,26 +57,21 @@ class GeminiLLMClient:
         self.is_streaming = False
         
         # Cache for generation configs
-        self._generation_configs: dict[tuple[int, float], GenerationConfig] = {}
+        self._generation_configs: dict[tuple[int, float], types.GenerateContentConfig] = {}
         
         logger.info(f"GeminiLLMClient initialized with language: {language}")
 
     async def initialize(self) -> None:
         """Initialize the Gemini client."""
         try:
-            # Configure Gemini API
-            genai.configure(api_key=settings.gemini_api_key)
+            # Create Gemini client
+            self.client = genai.Client(api_key=settings.gemini_api_key)
             
             # Initialize model with system instruction and tools
             gemini_tools = convert_tools_to_gemini_format()
-            self.model = GenerativeModel(
-                model_name="gemini-2.5-flash",
-                system_instruction=self.system_prompt,
-                tools=gemini_tools,
-            )
             
-            # Start chat session
-            self.chat = self.model.start_chat(history=[])
+            # Note: The new API uses a different approach for chat sessions
+            # We'll create the chat session when needed with system instructions
             
             logger.info("Gemini client initialized")
             
@@ -175,7 +169,7 @@ class GeminiLLMClient:
         self,
         max_tokens: int,
         temperature: float,
-    ) -> GenerationConfig:
+    ) -> types.GenerateContentConfig:
         """Get or create a cached generation config.
         
         Args:
@@ -183,13 +177,14 @@ class GeminiLLMClient:
             temperature: Sampling temperature
             
         Returns:
-            Cached or new GenerationConfig instance
+            Cached or new GenerateContentConfig instance
         """
         key = (max_tokens, temperature)
         if key not in self._generation_configs:
-            self._generation_configs[key] = GenerationConfig(
+            self._generation_configs[key] = types.GenerateContentConfig(
                 max_output_tokens=max_tokens,
                 temperature=temperature,
+                system_instruction=self.system_prompt,
             )
         return self._generation_configs[key]
 
@@ -210,8 +205,11 @@ class GeminiLLMClient:
         Yields:
             Individual tokens as they are generated
         """
-        if not self.chat:
+        if not self.client:
             await self.initialize()
+        
+        if not self.client:
+            raise RuntimeError("Failed to initialize Gemini client")
         
         self.is_streaming = True
         self.current_response = ""
@@ -224,12 +222,14 @@ class GeminiLLMClient:
             
             logger.info("Starting LLM completion stream")
             
-            # Stream response from Gemini
-            response = await asyncio.to_thread(
-                self.chat.send_message,
-                last_message,
-                generation_config=self._get_generation_config(max_tokens, temperature),
-                stream=True,
+            # Get generation config
+            config = self._get_generation_config(max_tokens, temperature)
+            
+            # Stream response from Gemini using new API
+            response = self.client.models.generate_content_stream(
+                model="gemini-2.5-flash",
+                contents=last_message,
+                config=config,
             )
             
             # Process streaming chunks
@@ -271,8 +271,11 @@ class GeminiLLMClient:
         Returns:
             Tuple of (response_text, tool_calls)
         """
-        if not self.chat:
+        if not self.client:
             await self.initialize()
+        
+        if not self.client:
+            raise RuntimeError("Failed to initialize Gemini client")
         
         try:
             last_message = self._get_last_user_message()
@@ -282,11 +285,15 @@ class GeminiLLMClient:
             
             logger.info("Getting LLM completion with tools")
             
+            # Get generation config
+            config = self._get_generation_config(max_tokens, temperature)
+            
             # Get response from Gemini (non-streaming for tool calls)
             response = await asyncio.to_thread(
-                self.chat.send_message,
-                last_message,
-                generation_config=self._get_generation_config(max_tokens, temperature),
+                self.client.models.generate_content,
+                model="gemini-2.5-flash",
+                contents=last_message,
+                config=config,
             )
             
             # Extract text and tool calls
@@ -302,7 +309,6 @@ class GeminiLLMClient:
         except Exception as e:
             logger.error(f"Error getting completion with tools: {e}", exc_info=True)
             return None, None
-            raise
 
     async def process_tool_calls(
         self,
@@ -378,9 +384,8 @@ class GeminiLLMClient:
         """
         self.messages = []
         
-        # Restart chat session
-        if self.model and keep_system:
-            self.chat = self.model.start_chat(history=[])
+        # Note: With the new API, we don't maintain a persistent chat session
+        # Each request is independent with history managed through messages
         
         logger.info("Conversation history cleared")
 

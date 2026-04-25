@@ -4,16 +4,17 @@ import asyncio
 import logging
 import base64
 import io
-from typing import Optional, Callable, TYPE_CHECKING, Any
+from typing import Optional, Callable, Any
 from app.config import settings
 
-if TYPE_CHECKING:
-    import google.generativeai as genai
-else:
-    try:
-        import google.generativeai as genai  # type: ignore
-    except ImportError:
-        genai = None  # type: ignore
+try:
+    from google import genai
+    from google.genai import types
+    GENAI_AVAILABLE = True
+except ImportError:
+    genai = None  # type: ignore
+    types = None  # type: ignore
+    GENAI_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -66,23 +67,22 @@ class GeminiSTTHandler:
         """Start the STT processing session."""
         logger.info("Starting Gemini STT (batch processing mode)")
         
-        if genai is None:
-            logger.error("google.generativeai package not installed")
+        if not GENAI_AVAILABLE or genai is None:
+            logger.error("google-genai package not installed")
             raise RuntimeError(
-                "google-generativeai package not installed. "
-                "Install with: pip install google-generativeai"
+                "google-genai package not installed. "
+                "Install with: pip install google-genai"
             )
         
         try:
-            # Configure Gemini
-            genai.configure(api_key=settings.gemini_api_key)  # type: ignore
+            # Create Gemini client
+            client = genai.Client(api_key=settings.gemini_api_key)
             
-            # Use a configurable Gemini model for audio transcription.
-            # gemini-2.5-flash is also used successfully elsewhere in the app.
-            self.model = genai.GenerativeModel(settings.gemini_stt_model_name)  # type: ignore
+            # Store client for later use
+            self.model = client
             
             logger.info(
-                f"✓ Gemini model initialized for audio transcription: "
+                f"✓ Gemini client initialized for audio transcription: "
                 f"{settings.gemini_stt_model_name}"
             )
             
@@ -154,15 +154,24 @@ class GeminiSTTHandler:
                     # Create prompt for transcription
                     prompt = f"Transcribe this audio in {self.language}. Only return the transcription text, nothing else."
                     
-                    # Send to Gemini
+                    # Send to Gemini using new API
+                    if not GENAI_AVAILABLE or genai is None or types is None:
+                        logger.error("Gemini client not available")
+                        continue
+                    
+                    if not isinstance(self.model, genai.Client):
+                        logger.error("Model is not a valid Gemini client")
+                        continue
+                    
                     response = await asyncio.to_thread(
-                        self.model.generate_content,
-                        [
+                        self.model.models.generate_content,
+                        model=settings.gemini_stt_model_name,
+                        contents=[
                             prompt,
-                            {
-                                "mime_type": "audio/pcm",
-                                "data": audio_b64
-                            }
+                            types.Part.from_bytes(
+                                data=audio_data,
+                                mime_type="audio/pcm"
+                            )
                         ]
                     )
                     

@@ -44,53 +44,42 @@ def test_api_key():
 
 
 def test_google_genai_import():
-    """Test if google-generativeai package is installed correctly."""
+    """Test if google-genai package is installed correctly."""
     print_section("2. Package Installation")
     
     try:
-        import google.generativeai as genai
-        print("✓ google-generativeai package installed")
+        from google import genai
+        from google.genai import types
+        print("✓ google-genai package installed")
         print(f"  Version: {genai.__version__ if hasattr(genai, '__version__') else 'unknown'}")
-        
-        # Try importing the new genai client
-        try:
-            from google import genai as new_genai
-            print("✓ New google.genai client available")
-            return True, True
-        except ImportError:
-            print("⚠ Warning: New google.genai client not available")
-            print("  You may need to upgrade: pip install --upgrade google-generativeai")
-            return True, False
+        return True, True
             
     except ImportError as e:
-        print(f"❌ FAIL: google-generativeai not installed: {e}")
-        print("  Install with: pip install google-generativeai")
+        print(f"❌ FAIL: google-genai not installed: {e}")
+        print("  Install with: pip install google-genai")
         return False, False
 
 
 def test_basic_api_access():
-    """Test basic API access with standard Gemini."""
+    """Test basic API access with new Gemini client."""
     print_section("3. Basic API Access Test")
     
     try:
-        import google.generativeai as genai
+        from google import genai
         
-        genai.configure(api_key=settings.gemini_api_key)  # type: ignore[attr-defined]
-        print("✓ API configured successfully")
+        client = genai.Client(api_key=settings.gemini_api_key)
+        print("✓ Client created successfully")
         
         # Try to list models
         print("\nAttempting to list available models...")
         try:
-            models = genai.list_models()  # type: ignore[attr-defined]
+            models = client.models.list()
             model_names = [m.name for m in models]
             print(f"✓ Successfully retrieved {len(model_names)} models")
             
             print("\nAvailable models:")
-            for model in models[:10]:  # Show first 10
+            for model in list(models)[:10]:  # Show first 10
                 print(f"  - {model.name}")
-                if hasattr(model, 'supported_generation_methods'):
-                    methods = model.supported_generation_methods
-                    print(f"    Methods: {', '.join(methods)}")
             
             if len(model_names) > 10:
                 print(f"  ... and {len(model_names) - 10} more")
@@ -116,7 +105,7 @@ def test_basic_api_access():
             return False, []
             
     except Exception as e:
-        print(f"❌ FAIL: Error configuring API: {e}")
+        print(f"❌ FAIL: Error creating client: {e}")
         return False, []
 
 
@@ -125,31 +114,37 @@ def test_simple_generation():
     print_section("4. Simple Generation Test")
     
     try:
-        import google.generativeai as genai
+        from google import genai
         
-        genai.configure(api_key=settings.gemini_api_key)  # type: ignore[attr-defined]
+        client = genai.Client(api_key=settings.gemini_api_key)
         
-        # Try with gemini-pro first
-        print("Testing with gemini-pro model...")
+        # Try with gemini-2.5-flash
+        print("Testing with gemini-2.5-flash model...")
         try:
-            model = genai.GenerativeModel('gemini-pro')  # type: ignore[attr-defined]
-            response = model.generate_content("Say 'Hello' in one word")
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents="Say 'Hello' in one word"
+            )
             print(f"✓ Generation successful!")
-            print(f"  Response: {response.text[:100]}")
+            if response.text:
+                print(f"  Response: {response.text[:100]}")
             return True
         except Exception as e:
-            print(f"❌ FAIL with gemini-pro: {e}")
+            print(f"❌ FAIL with gemini-2.5-flash: {e}")
             
             # Try alternative model
-            print("\nTrying gemini-2.5-flash...")
+            print("\nTrying gemini-pro...")
             try:
-                model = genai.GenerativeModel('gemini-2.5-flash')  # type: ignore[attr-defined]
-                response = model.generate_content("Say 'Hello' in one word")
-                print(f"✓ Generation successful with gemini-2.5-flash!")
-                print(f"  Response: {response.text[:100]}")
+                response = client.models.generate_content(
+                    model='gemini-pro',
+                    contents="Say 'Hello' in one word"
+                )
+                print(f"✓ Generation successful with gemini-pro!")
+                if response.text:
+                    print(f"  Response: {response.text[:100]}")
                 return True
             except Exception as e2:
-                print(f"❌ FAIL with gemini-2.5-flash: {e2}")
+                print(f"❌ FAIL with gemini-pro: {e2}")
                 return False
                 
     except Exception as e:
@@ -265,7 +260,7 @@ def print_summary(results: dict):
         print("\n⚠️  Some tests failed. Review the output above for details.")
         print("\nCommon solutions:")
         print("  1. Verify API key at: https://aistudio.google.com/apikey")
-        print("  2. Upgrade package: pip install --upgrade google-generativeai")
+        print("  2. Install package: pip install google-genai")
         print("  3. Enable Gemini API in Google Cloud Console")
         print("  4. Check API quotas and billing")
         print("  5. For Live API: Contact Google for experimental access")

@@ -115,13 +115,13 @@ def check_packages() -> bool:
         )
         all_passed = False
     
-    # Check google-generativeai
+    # Check google-genai
     try:
-        import google.generativeai
-        print_status("google-generativeai", True, "Installed (for LLM)")
+        from google import genai
+        print_status("google-genai", True, "Installed (for LLM)")
     except ImportError:
         print_status(
-            "google-generativeai",
+            "google-genai",
             False,
             "Not installed. Run: pip install google-generativeai"
         )
