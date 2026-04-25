@@ -1,0 +1,421 @@
+@startuml AI Claims Intake System - Component Interactions
+!theme plain
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 200
+
+title AI Claims Intake System - Component Interaction Flow
+
+actor Caller
+participant "Twilio\nPhone Network" as Twilio
+participant "FastAPI\nMain App" as FastAPI
+participant "TwilioHandler" as TwilioHandler
+participant "MediaStreamHandler" as MediaStream
+participant "CallSession" as Session
+participant "DialogStateMachine" as StateMachine
+participant "GeminiSTTHandler" as STT
+participant "GeminiLLMClient" as LLM
+participant "GradiumTTSHandler" as TTS
+participant "ClaimService" as ClaimService
+participant "InsurantService" as InsurantService
+database "Database" as DB
+
+== Call Initiation ==
+Caller -> Twilio: Initiates call
+Twilio -> FastAPI: POST /twilio/voice\n(webhook)
+FastAPI -> TwilioHandler: handle_incoming_call()
+TwilioHandler --> FastAPI: TwiML with\n<Stream> WebSocket URL
+FastAPI --> Twilio: TwiML Response
+Twilio -> FastAPI: WebSocket connection\n/media-stream
+FastAPI -> MediaStream: accept() & create\nMediaStreamHandler
+
+== Session Setup ==
+MediaStream -> Session: Create CallSession\n(call_sid, from_number)
+activate Session
+Session -> StateMachine: Initialize\n(GREETING state)
+activate StateMachine
+StateMachine --> Session: StateMachine ready
+Session --> MediaStream: Session created
+MediaStream -> STT: Initialize GeminiSTTHandler
+activate STT
+STT --> MediaStream: STT ready
+MediaStream -> LLM: Initialize GeminiLLMClient
+activate LLM
+LLM --> MediaStream: LLM ready
+MediaStream -> TTS: Initialize GradiumTTSHandler
+activate TTS
+TTS -> TTS: connect() to\nGradium WebSocket
+TTS --> MediaStream: TTS connected
+
+== Media Stream Start ==
+Twilio -> MediaStream: {"event": "start",\n"streamSid": "..."}
+MediaStream -> MediaStream: Start background tasks:\n- _receive_from_twilio()\n- _send_to_twilio()\n- _process_audio()
+MediaStream -> STT: start() streaming
+STT --> MediaStream: Streaming started
+MediaStream -> LLM: Initialize with\nsystem prompt
+LLM --> MediaStream: Ready with system prompt
+MediaStream -> TTS: Send greeting text
+TTS -> TTS: synthesize_text()
+TTS --> MediaStream: on_audio(pcm_bytes)
+MediaStream -> MediaStream: Encode to μ-law,\nbase64, queue
+MediaStream -> Twilio: {"event": "media",\n"payload": "..."}
+Twilio -> Caller: Play greeting audio
+
+== Audio Processing Loop ==
+Caller -> Twilio: Speaks (audio)
+Twilio -> MediaStream: {"event": "media",\n"payload": "base64_audio"}
+MediaStream -> MediaStream: Decode base64,\nμ-law audio
+MediaStream -> MediaStream: incoming_audio_queue.put()
+
+MediaStream -> MediaStream: _process_audio() gets chunk
+MediaStream -> STT: send_audio(pcm_chunk)
+STT -> STT: Process with Gemini STT API
+STT --> MediaStream: on_final(transcript,\nconfidence, language)
+MediaStream -> Session: add_transcript_entry(\n"user", transcript)
+Session --> MediaStream: Transcript added
+
+== LLM Processing ==
+MediaStream -> LLM: add_user_message(transcript)
+LLM --> MediaStream: Message added
+MediaStream -> LLM: get_completion_with_tools()
+LLM -> LLM: Send to Gemini API\nwith function calling
+LLM --> MediaStream: (response_text, tool_calls)
+
+alt Tool Call Required
+    MediaStream -> LLM: process_tool_calls()
+    LLM -> LLM: validate_tool_call()
+    
+    alt verify_insurant tool
+        LLM --> MediaStream: ("verify_insurant", {birthdate, address})
+        MediaStream -> InsurantService: verify_insurant(\nphone_number, birthdate, address)
+        activate InsurantService
+        InsurantService -> DB: SELECT * FROM insurants\nWHERE phone = ? AND birthdate = ?
+        DB --> InsurantService: Insurant record
+        InsurantService -> InsurantService: Verify address match
+        InsurantService --> MediaStream: {verified: true,\ninsurant_id, policy_numbers}
+        deactivate InsurantService
+        MediaStream -> Session: set_insurant_verified(\ninsurant_id, policy_numbers)
+        Session --> MediaStream: Verification stored
+        MediaStream -> LLM: add_tool_result(\ntool_call_id, verification_result)
+        LLM --> MediaStream: Tool result added
+        
+    else get_policy_info tool
+        LLM --> MediaStream: ("get_policy_info", {policy_number})
+        MediaStream -> InsurantService: get_policy_details(policy_number)
+        activate InsurantService
+        InsurantService -> DB: SELECT * FROM policies\nWHERE policy_number = ?
+        DB --> InsurantService: Policy details\n(coverage, deductible, limits)
+        InsurantService --> MediaStream: PolicyDetails
+        deactivate InsurantService
+        MediaStream -> Session: store_policy_context(policy_details)
+        Session --> MediaStream: Policy context stored
+        MediaStream -> LLM: add_tool_result(\ntool_call_id, policy_info)
+        LLM --> MediaStream: Tool result added
+        
+    else check_existing_claims tool
+        LLM --> MediaStream: ("check_existing_claims", {insurant_id})
+        MediaStream -> ClaimService: get_claims_by_insurant(insurant_id)
+        activate ClaimService
+        ClaimService -> DB: SELECT * FROM claims\nWHERE insurant_id = ?\nORDER BY created_at DESC
+        DB --> ClaimService: List of existing claims
+        ClaimService --> MediaStream: List[ClaimResponse]
+        deactivate ClaimService
+        MediaStream -> Session: store_existing_claims(claims)
+        Session --> MediaStream: Claims stored
+        MediaStream -> LLM: add_tool_result(\ntool_call_id, claims_summary)
+        LLM --> MediaStream: Tool result added
+        
+    else create_claim tool
+        LLM --> MediaStream: ("create_claim", arguments)
+        MediaStream -> Session: update_claim_field()\nfor each field
+        Session --> MediaStream: Fields updated
+        MediaStream -> ClaimService: create_claim(claim_data)
+        activate ClaimService
+        ClaimService -> DB: INSERT INTO claims\n(insurant_id, policy_number, ...)
+        DB --> ClaimService: claim_id
+        ClaimService --> MediaStream: ClaimResponse
+        deactivate ClaimService
+        MediaStream -> Session: set_claim_id(claim_id)
+        Session --> MediaStream: Claim ID stored
+        MediaStream -> LLM: add_tool_result(\ntool_call_id, result)
+        LLM --> MediaStream: Tool result added
+        
+    else update_claim_field tool
+        LLM --> MediaStream: ("update_claim_field", args)
+        MediaStream -> Session: update_claim_field(\nfield, value)
+        Session --> MediaStream: Field updated
+        MediaStream -> LLM: add_tool_result(\ntool_call_id, "updated")
+        LLM --> MediaStream: Tool result added
+        
+    else change_language tool
+        LLM --> MediaStream: ("change_language", {language})
+        MediaStream -> Session: change_language(language)
+        Session --> MediaStream: Language changed
+        MediaStream -> STT: change_language(language)
+        STT --> MediaStream: Language updated
+        MediaStream -> LLM: change_language(language)
+        LLM --> MediaStream: Language updated
+        MediaStream -> TTS: change_voice(voice_id, language)
+        TTS --> MediaStream: Voice changed
+        
+    else request_human_callback tool
+        LLM --> MediaStream: ("request_human_callback", args)
+        MediaStream -> Session: request_escalation(reason)
+        Session --> MediaStream: Escalation requested
+        MediaStream -> LLM: add_tool_result(\ntool_call_id, "escalation_requested")
+        LLM --> MediaStream: Tool result added
+    end
+    
+    MediaStream -> LLM: get_completion_with_tools()\n(follow-up response)
+    LLM --> MediaStream: (response_text, None)
+end
+
+== State Transition ==
+MediaStream -> Session: Get current state
+Session -> StateMachine: get_current_state()
+StateMachine --> Session: Current DialogState
+Session --> MediaStream: Current state
+MediaStream -> StateMachine: transition_to(next_state)
+StateMachine -> StateMachine: _is_valid_transition()
+StateMachine --> MediaStream: Transition success
+
+== TTS Synthesis ==
+MediaStream -> Session: add_transcript_entry(\n"assistant", response_text)
+Session --> MediaStream: Transcript added
+MediaStream -> TTS: synthesize_text(response_text)
+TTS -> TTS: Send to Gradium WebSocket
+TTS -> TTS: _receive_audio() loop
+
+loop For each audio chunk
+    TTS --> MediaStream: on_audio(pcm_bytes)
+    MediaStream -> MediaStream: Convert PCM to μ-law
+    MediaStream -> MediaStream: outgoing_audio_queue.put()
+    MediaStream -> MediaStream: _send_to_twilio() gets chunk
+    MediaStream -> Twilio: {"event": "media",\n"payload": "base64_audio"}
+    Twilio -> Caller: Play audio
+end
+
+TTS --> MediaStream: on_word_boundary(\nword, start_s, stop_s)
+TTS -> TTS: Store word boundaries
+
+== Barge-in Handling ==
+opt User interrupts while agent speaking
+    Caller -> Twilio: Speaks (audio)
+    Twilio -> MediaStream: {"event": "media"}
+    MediaStream -> MediaStream: Detect is_agent_speaking
+    MediaStream -> MediaStream: _handle_barge_in()
+    MediaStream -> TTS: stop_synthesis()
+    TTS -> TTS: Send stop message\nto Gradium
+    MediaStream -> MediaStream: Clear outgoing_audio_queue
+    MediaStream -> TTS: get_words_spoken()
+    TTS --> MediaStream: List of (word, start, stop)
+    MediaStream -> TTS: truncate_at_time(interrupt_time)
+    TTS --> MediaStream: Truncated text
+    MediaStream -> Session: truncate_last_assistant_message(\ntruncated_text)
+    Session --> MediaStream: Message truncated
+    MediaStream -> MediaStream: Resume listening to user
+end
+
+== Authentication & Verification ==
+opt GREETING → DISCLOSURE state
+    StateMachine -> StateMachine: transition_to(DISCLOSURE)
+    MediaStream -> LLM: Request disclosure message
+    LLM --> MediaStream: Disclosure text
+    MediaStream -> TTS: Speak disclosure
+    TTS --> MediaStream: Audio chunks
+    MediaStream -> Twilio: Send audio
+    Twilio -> Caller: Play disclosure
+end
+
+opt DISCLOSURE → CONSENT state
+    note over Caller, MediaStream: User provides verbal consent
+    MediaStream -> Session: set_consent(True)
+    Session --> MediaStream: Consent recorded
+    StateMachine -> StateMachine: transition_to(CONSENT)
+end
+
+opt Authentication Phase
+    MediaStream -> LLM: Request authentication questions
+    LLM --> MediaStream: "Please provide birthdate\nand address"
+    MediaStream -> TTS: Speak authentication request
+    TTS --> MediaStream: Audio chunks
+    MediaStream -> Twilio: Send audio
+    Twilio -> Caller: Play authentication request
+    
+    Caller -> Twilio: Provides birthdate & address
+    Twilio -> MediaStream: Audio data
+    MediaStream -> STT: Process audio
+    STT --> MediaStream: Transcript with birthdate & address
+    MediaStream -> LLM: add_user_message(transcript)
+    LLM --> MediaStream: Message added
+    MediaStream -> LLM: get_completion_with_tools()
+    LLM --> MediaStream: (None, [verify_insurant tool_call])
+    
+    MediaStream -> InsurantService: verify_insurant(\nfrom_number, birthdate, address)
+    activate InsurantService
+    InsurantService -> DB: SELECT * FROM insurants\nWHERE phone = ?\nAND birthdate = ?
+    DB --> InsurantService: Insurant record
+    InsurantService -> InsurantService: Verify address match\n(fuzzy matching)
+    
+    alt Authentication Successful
+        InsurantService --> MediaStream: {verified: true,\ninsurant_id, name,\npolicy_numbers: [...]}
+        deactivate InsurantService
+        MediaStream -> Session: set_insurant_verified(\ninsurant_id, policy_numbers)
+        Session --> MediaStream: Verification stored
+        MediaStream -> LLM: add_tool_result(\n"Authentication successful")
+        LLM --> MediaStream: Tool result added
+        MediaStream -> LLM: get_completion_with_tools()
+        LLM --> MediaStream: "Thank you [name],\nI've verified your identity"
+        
+        note over MediaStream, InsurantService: Optionally fetch policy details
+        MediaStream -> InsurantService: get_policy_details(\npolicy_numbers[0])
+        activate InsurantService
+        InsurantService -> DB: SELECT * FROM policies\nWHERE policy_number = ?
+        DB --> InsurantService: Policy details
+        InsurantService --> MediaStream: PolicyDetails\n(coverage, deductible)
+        deactivate InsurantService
+        MediaStream -> Session: store_policy_context(policy_details)
+        Session --> MediaStream: Policy stored
+        
+        StateMachine -> StateMachine: transition_to(INTAKE)
+        
+    else Authentication Failed
+        InsurantService --> MediaStream: {verified: false,\nreason: "no_match"}
+        deactivate InsurantService
+        MediaStream -> Session: increment_auth_attempts()
+        Session --> MediaStream: Attempt count
+        
+        alt Max attempts reached
+            MediaStream -> Session: request_escalation(\n"authentication_failed")
+            Session --> MediaStream: Escalation requested
+            MediaStream -> LLM: add_tool_result(\n"Authentication failed - escalating")
+            LLM --> MediaStream: Tool result added
+            StateMachine -> StateMachine: transition_to(CLOSE)
+        else Retry authentication
+            MediaStream -> LLM: add_tool_result(\n"Authentication failed - retry")
+            LLM --> MediaStream: Tool result added
+            MediaStream -> LLM: get_completion_with_tools()
+            LLM --> MediaStream: "I couldn't verify that.\nLet's try again..."
+        end
+    end
+end
+
+== Claim Information Gathering ==
+opt INTAKE state - Gather claim details
+    loop For each required field
+        note over MediaStream, LLM: Repeat audio processing\nloop for each field
+        MediaStream -> LLM: Process user response
+        LLM --> MediaStream: (response, [update_claim_field])
+        MediaStream -> Session: update_claim_field(field, value)
+        Session --> MediaStream: Field updated
+    end
+    
+    note over MediaStream, ClaimService: Check for related existing claims
+    MediaStream -> Session: get_insurant_id()
+    Session --> MediaStream: insurant_id
+    MediaStream -> ClaimService: get_claims_by_insurant(insurant_id)
+    activate ClaimService
+    ClaimService -> DB: SELECT * FROM claims\nWHERE insurant_id = ?\nAND status IN ('open', 'pending')
+    DB --> ClaimService: Existing claims
+    ClaimService --> MediaStream: List[ClaimResponse]
+    deactivate ClaimService
+    
+    alt Related claims found
+        MediaStream -> LLM: add_context(\n"Existing claims found: ...")
+        LLM --> MediaStream: Context added
+        MediaStream -> LLM: get_completion_with_tools()
+        LLM --> MediaStream: "I see you have an existing\nclaim. Is this related?"
+    end
+    
+    StateMachine -> StateMachine: transition_to(CONFIRM)
+end
+
+opt CONFIRM state - Review and confirm
+    MediaStream -> Session: get_claim_data()
+    Session --> MediaStream: Complete claim data
+    MediaStream -> LLM: Request confirmation\nwith claim summary
+    LLM --> MediaStream: Confirmation message\nwith summary
+    MediaStream -> TTS: Speak confirmation
+    TTS --> MediaStream: Audio chunks
+    MediaStream -> Twilio: Send audio
+    Twilio -> Caller: Play confirmation
+    
+    Caller -> Twilio: Confirms or requests changes
+    Twilio -> MediaStream: Audio response
+    MediaStream -> STT: Process audio
+    STT --> MediaStream: Transcript
+    MediaStream -> LLM: Process confirmation response
+    LLM --> MediaStream: (response, tool_calls)
+    
+    alt User confirms
+        StateMachine -> StateMachine: transition_to(CLOSE)
+    else User requests changes
+        StateMachine -> StateMachine: transition_to(INTAKE)
+        note over MediaStream: Return to gathering\nfor corrections
+    end
+end
+
+opt CLOSE state - Create claim and close
+    MediaStream -> Session: get_claim_data()
+    Session --> MediaStream: Complete claim data
+    MediaStream -> ClaimService: create_claim(\nclaim_data + transcript)
+    activate ClaimService
+    ClaimService -> DB: INSERT INTO claims\n(insurant_id, policy_number,\ncategory, description, ...)
+    DB --> ClaimService: claim_id
+    ClaimService -> DB: INSERT INTO claim_transcripts\n(claim_id, transcript)
+    DB --> ClaimService: Success
+    ClaimService --> MediaStream: ClaimResponse\n(claim_id, status)
+    deactivate ClaimService
+    MediaStream -> Session: set_claim_id(claim_id)
+    Session --> MediaStream: Claim ID stored
+    
+    MediaStream -> LLM: Format claim ID for speech
+    LLM --> MediaStream: Formatted claim ID
+    MediaStream -> TTS: Speak claim ID\nand closing message
+    TTS --> MediaStream: Audio chunks
+    MediaStream -> Twilio: Send audio
+    Twilio -> Caller: Play closing message
+    
+    StateMachine -> StateMachine: transition_to(ENDED)
+end
+
+== Call Termination ==
+alt Normal completion
+    StateMachine -> StateMachine: transition_to(ENDED)
+    MediaStream -> Session: end_session()
+    Session --> MediaStream: Session ended
+else User hangs up
+    Twilio -> MediaStream: {"event": "stop"}
+    MediaStream -> MediaStream: _handle_stop()
+    MediaStream -> Session: end_session()
+    Session --> MediaStream: Session ended
+end
+
+MediaStream -> STT: stop()
+STT --> MediaStream: STT stopped
+deactivate STT
+MediaStream -> TTS: disconnect()
+TTS --> MediaStream: TTS disconnected
+deactivate TTS
+MediaStream -> MediaStream: cleanup()
+MediaStream -> MediaStream: Clear audio queues
+MediaStream -> Session: to_dict()
+Session --> MediaStream: Session data (JSON)
+
+note over MediaStream, DB: Save complete session\ndata to database
+MediaStream -> ClaimService: save_session_data(session_data)
+activate ClaimService
+ClaimService -> DB: INSERT INTO call_sessions\n(session_id, transcript,\nmetadata, duration, ...)
+DB --> ClaimService: Success
+ClaimService --> MediaStream: Session saved
+deactivate ClaimService
+
+deactivate LLM
+deactivate Session
+deactivate StateMachine
+
+Twilio -> FastAPI: WebSocket disconnect
+FastAPI -> MediaStream: WebSocketDisconnect exception
+MediaStream -> MediaStream: cleanup() in finally block
+
+@enduml
