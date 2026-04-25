@@ -104,6 +104,25 @@ https://<your-ngrok-url>/twilio/voice
 docker compose -f infra/docker-compose.yml up
 ```
 
+### Using Podman (Recommended for Local Development)
+
+For local development with Twilio integration, use Podman with ngrok:
+
+```bash
+# Quick start (includes ngrok setup)
+./infra/start-podman.sh
+
+# Reload containers with updated .env values
+./infra/reload-podman.sh
+```
+
+See [`infra/PODMAN.md`](infra/PODMAN.md) for detailed Podman setup instructions.
+
+**When to reload containers:**
+- After updating API keys or credentials in `.env`
+- After changing service endpoints or configuration
+- When environment variables aren't being picked up by running containers
+
 ## Configuration
 
 All configuration is done via environment variables. See [`.env.example`](.env.example) for all available options.

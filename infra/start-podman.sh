@@ -27,10 +27,15 @@ if ! grep -q "NGROK_AUTHTOKEN=.*[^=]" .env; then
     exit 1
 fi
 
-# Start services
+# Stop any existing services to ensure clean state
 echo ""
-echo "📦 Starting services with podman-compose..."
-podman-compose -f infra/docker-compose.podman.yml up -d
+echo "🛑 Stopping any existing services..."
+podman-compose -f infra/docker-compose.podman.yml down 2>/dev/null || true
+
+# Start services with fresh build to pick up .env changes
+echo ""
+echo "📦 Building and starting services with podman-compose..."
+podman-compose -f infra/docker-compose.podman.yml up -d --build
 
 # Wait for services to be ready
 echo ""

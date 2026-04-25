@@ -31,11 +31,33 @@ For the fastest setup, use the provided start script:
 This script will:
 1. Check if `.env` file exists (creates from `.env.example` if not)
 2. Validate ngrok auth token is set
-3. Start all services with podman-compose
-4. Automatically fetch your ngrok public URL
-5. Optionally update your `.env` file with the ngrok URL
-6. Restart the app to pick up the new configuration
-7. Display all service URLs and Twilio configuration instructions
+3. Stop any existing services and rebuild with latest .env values
+4. Start all services with podman-compose
+5. Automatically fetch your ngrok public URL
+6. Optionally update your `.env` file with the ngrok URL
+7. Restart the app to pick up the new configuration
+8. Display all service URLs and Twilio configuration instructions
+
+### Reloading with Updated .env Values
+
+If you've updated your `.env` file and need to reload the containers with the new values:
+
+```bash
+./infra/reload-podman.sh
+```
+
+This script will:
+1. Stop all running services
+2. Clean up old images
+3. Rebuild services with the latest `.env` configuration
+4. Start all services with the updated environment variables
+5. Display service URLs and status
+
+**When to use reload-podman.sh:**
+- After changing API keys or credentials in `.env`
+- After updating service endpoints or configuration
+- When environment variables aren't being picked up by running containers
+- To ensure a clean state with the latest configuration
 
 ## Manual Setup
 
@@ -146,9 +168,17 @@ podman-compose -f infra/docker-compose.podman.yml logs app
 
 ### Rebuilding Images
 
+To rebuild images after code changes:
+
 ```bash
 podman-compose -f infra/docker-compose.podman.yml build
 podman-compose -f infra/docker-compose.podman.yml up
+```
+
+To rebuild and reload with updated `.env` values:
+
+```bash
+./infra/reload-podman.sh
 ```
 
 ## Key Differences from Docker
