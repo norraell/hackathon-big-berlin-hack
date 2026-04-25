@@ -1,0 +1,28 @@
+{
+  "name": "hackathon-big-berlin-hack",
+  "version": "1.0.0",
+  "description": "An AI-powered phone claims intake system using Twilio, Google Gemini STT/LLM, and Gradium TTS.",
+  "main": "index.js",
+  "directories": {
+    "example": "examples",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/norraell/hackathon-big-berlin-hack.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/norraell/hackathon-big-berlin-hack/issues"
+  },
+  "homepage": "https://github.com/norraell/hackathon-big-berlin-hack#readme",
+  "dependencies": {
+    "ws": "^8.20.0"
+  }
+}

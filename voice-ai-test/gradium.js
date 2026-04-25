@@ -3,9 +3,9 @@ import fs from "fs";
 
 export function generateSpeech(text) {
   return new Promise((resolve) => {
-    const ws = new WebSocket("wss://api.gradium.ai/tts/websocket", {
+    const ws = new WebSocket("wss://api.gradium.ai/api/speech/tts", {
       headers: {
-        Authorization: "Bearer YOUR_API_KEY"
+        "x-api-key": "Bearer YOUR_API_KEY"
       }
     });
 
