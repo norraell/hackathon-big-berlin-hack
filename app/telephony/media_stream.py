@@ -65,15 +65,18 @@ class MediaStreamHandler:
             send_task = asyncio.create_task(self._send_to_twilio())
             process_task = asyncio.create_task(self._process_audio())
             
-            # Wait for any task to complete (usually means disconnection)
-            done, pending = await asyncio.wait(
-                [receive_task, send_task, process_task],
-                return_when=asyncio.FIRST_COMPLETED,
-            )
+            # Keep the call alive until Twilio closes the inbound stream.
+            # Sender/processor tasks may be idle between utterances and must
+            # not end the whole call when a turn finishes.
+            await receive_task
             
-            # Cancel remaining tasks
-            for task in pending:
+            self.is_streaming = False
+            
+            # Cancel background workers once the receive loop ends.
+            for task in (send_task, process_task):
                 task.cancel()
+            
+            for task in (send_task, process_task):
                 try:
                     await task
                 except asyncio.CancelledError:
@@ -194,7 +197,7 @@ class MediaStreamHandler:
         μ-law encoded audio chunks to Twilio.
         """
         try:
-            while self.is_streaming:
+            while True:
                 # Get audio from outgoing queue
                 audio_bytes = await self.outgoing_audio_queue.get()
                 
@@ -212,6 +215,9 @@ class MediaStreamHandler:
                 
                 await self.websocket.send_text(json.dumps(message))
                 
+        except asyncio.CancelledError:
+            logger.info("Twilio send loop cancelled")
+            raise
         except Exception as e:
             logger.error(f"Error sending to Twilio: {e}", exc_info=True)
 
@@ -226,7 +232,7 @@ class MediaStreamHandler:
         5. Puts synthesized audio in outgoing queue
         """
         try:
-            while self.is_streaming:
+            while True:
                 # Get audio chunk from queue
                 audio_chunk = await self.incoming_audio_queue.get()
                 
@@ -243,6 +249,9 @@ class MediaStreamHandler:
                 # Small delay to prevent tight loop
                 await asyncio.sleep(0.01)
                 
+        except asyncio.CancelledError:
+            logger.info("Audio processing loop cancelled")
+            raise
         except Exception as e:
             logger.error(f"Error processing audio: {e}", exc_info=True)
 
