@@ -1,0 +1,19 @@
+project     = "voice-intake"
+environment = "dev"
+aws_region  = "eu-central-1"
+
+# Leave empty for an HTTP-only ALB (dev). For prod, set both:
+# domain_name     = "voice.example.com"
+# route53_zone_id = "Z0123456789ABCDEFGHIJ"
+
+company_name        = "Acme Insurance"
+default_language    = "en"
+supported_languages = "en,de,es,fr,pt"
+sla_hours           = 24
+
+# Override after first push if you tag images differently.
+# container_image = "<account>.dkr.ecr.eu-central-1.amazonaws.com/voice-intake-dev-app:v1.2.3"
+
+tags = {
+  Owner = "you@example.com"
+}
