@@ -4,7 +4,11 @@ import logging
 from datetime import datetime
 from typing import Optional
 
+from sqlalchemy import select
+
 from app.claims.models import Claim, ClaimCreate, ClaimUpdate, ClaimResponse
+from app.claims.verification import VerificationService
+from app.claims.insurant_models import VerificationRequest
 
 logger = logging.getLogger(__name__)
 
@@ -19,17 +23,32 @@ class ClaimService:
             db_session: Database session
         """
         self.db = db_session
+        self.verification_service = VerificationService(db_session)
 
-    async def create_claim(self, claim_data: ClaimCreate) -> ClaimResponse:
+    async def create_claim(
+        self,
+        claim_data: ClaimCreate,
+        policy_id: Optional[str] = None,
+        insurant_id: Optional[str] = None,
+    ) -> ClaimResponse:
         """Create a new claim.
         
         Args:
             claim_data: Claim creation data
+            policy_id: Optional policy ID if verified
+            insurant_id: Optional insurant ID if verified
             
         Returns:
             Created claim
         """
         try:
+            # Prepare metadata with policy/insurant info
+            metadata = claim_data.metadata or {}
+            if policy_id:
+                metadata["policy_id"] = policy_id
+            if insurant_id:
+                metadata["insurant_id"] = insurant_id
+            
             # Create claim instance
             claim = Claim(
                 caller_name=claim_data.caller_name,
@@ -45,7 +64,7 @@ class ClaimService:
                 call_sid=claim_data.call_sid,
                 language=claim_data.language,
                 transcript=claim_data.transcript,
-                metadata=claim_data.metadata,
+                metadata=metadata,
             )
             
             # Add to database
@@ -55,7 +74,7 @@ class ClaimService:
             
             logger.info(f"Claim created: {claim.claim_id}")
             
-            return ClaimResponse.from_orm(claim)
+            return ClaimResponse.model_validate(claim)
             
         except Exception as e:
             await self.db.rollback()
@@ -75,7 +94,7 @@ class ClaimService:
             claim = await self.db.get(Claim, claim_id)
             
             if claim:
-                return ClaimResponse.from_orm(claim)
+                return ClaimResponse.model_validate(claim)
             
             return None
             
@@ -115,7 +134,7 @@ class ClaimService:
             
             logger.info(f"Claim updated: {claim_id}")
             
-            return ClaimResponse.from_orm(claim)
+            return ClaimResponse.model_validate(claim)
             
         except Exception as e:
             await self.db.rollback()
@@ -150,7 +169,7 @@ class ClaimService:
             
             logger.info(f"Transcript attached to claim: {claim_id}")
             
-            return ClaimResponse.from_orm(claim)
+            return ClaimResponse.model_validate(claim)
             
         except Exception as e:
             await self.db.rollback()
@@ -167,16 +186,12 @@ class ClaimService:
             List of claims
         """
         try:
-            # TODO: Implement query
-            # result = await self.db.execute(
-            #     select(Claim).where(Claim.session_id == session_id)
-            # )
-            # claims = result.scalars().all()
+            result = await self.db.execute(
+                select(Claim).where(Claim.session_id == session_id)
+            )
+            claims = result.scalars().all()
             
-            # return [ClaimResponse.from_orm(claim) for claim in claims]
-            
-            # Placeholder
-            return []
+            return [ClaimResponse.model_validate(claim) for claim in claims]
             
         except Exception as e:
             logger.error(f"Error getting claims for session {session_id}: {e}", exc_info=True)

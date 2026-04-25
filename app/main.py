@@ -34,7 +34,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info(f"Supported languages: {settings.supported_languages}")
     logger.info(f"Default language: {settings.default_language}")
     
-    # TODO: Initialize database connection pool
+    # Initialize database
+    try:
+        from app.database import init_db
+        await init_db()
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}", exc_info=True)
+        raise
+    
     # TODO: Initialize Redis connection
     # TODO: Warm up AI service connections
     
@@ -42,7 +50,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     
     # Shutdown
     logger.info("Shutting down AI Claims Intake System")
-    # TODO: Close database connections
+    
+    # Close database connections
+    try:
+        from app.database import close_db
+        await close_db()
+        logger.info("Database connections closed")
+    except Exception as e:
+        logger.error(f"Error closing database: {e}", exc_info=True)
+    
     # TODO: Close Redis connections
     # TODO: Close AI service connections
 
@@ -77,13 +93,25 @@ async def health_check() -> dict[str, str]:
     Returns:
         Health status
     """
-    # TODO: Add checks for database, Redis, and AI services
-    return {
+    health_status = {
         "status": "healthy",
-        "database": "ok",
-        "redis": "ok",
-        "ai_services": "ok",
+        "database": "unknown",
+        "redis": "not_implemented",
+        "ai_services": "not_implemented",
     }
+    
+    # Check database connection
+    try:
+        from app.database import async_engine
+        async with async_engine.connect() as conn:
+            await conn.execute("SELECT 1")
+        health_status["database"] = "ok"
+    except Exception as e:
+        logger.error(f"Database health check failed: {e}")
+        health_status["database"] = "error"
+        health_status["status"] = "degraded"
+    
+    return health_status
 
 
 @app.post("/twilio/voice")
@@ -112,6 +140,84 @@ async def media_stream_endpoint(websocket: WebSocket) -> None:
     Args:
         websocket: WebSocket connection from Twilio
     """
+
+@app.post("/api/verify-policy")
+async def verify_policy_endpoint(
+    request: dict,
+) -> dict:
+    """Verify policy and insurant information.
+    
+    Args:
+        request: Verification request with policy identifiers
+        
+    Returns:
+        Verification response
+    """
+    from app.database import get_db
+    from app.claims.verification import VerificationService
+    from app.claims.insurant_models import VerificationRequest
+    
+    try:
+        from app.database import get_async_session
+        
+        verification_request = VerificationRequest(**request)
+        
+        async with get_async_session() as session:
+            verification_service = VerificationService(session)
+            result = await verification_service.verify_policy(verification_request)
+            
+        return result.model_dump()
+        
+    except Exception as e:
+        logger.error(f"Error verifying policy: {e}", exc_info=True)
+        return {
+            "verified": False,
+            "message": f"Verification error: {str(e)}",
+            "coverage_active": False,
+            "can_file_claim": False,
+        }
+
+
+@app.get("/api/policy/{policy_number}")
+async def get_policy_endpoint(policy_number: str) -> dict:
+    """Get policy information by policy number.
+    
+    Args:
+        policy_number: Policy number
+        
+    Returns:
+        Policy information
+    """
+    from app.database import get_db
+    from app.claims.insurant_models import Policy
+    from sqlalchemy import select
+    
+    try:
+        from app.database import get_async_session
+        
+        async with get_async_session() as session:
+            query = select(Policy).where(Policy.policy_number == policy_number)
+            result = await session.execute(query)
+            policy = result.scalar_one_or_none()
+            
+            if not policy:
+                return {"error": "Policy not found"}
+            
+            return {
+                "policy_id": policy.policy_id,
+                "policy_number": policy.policy_number,
+                "product_name": policy.product_name,
+                "license_plate": policy.license_plate,
+                "vehicle_make": policy.vehicle_make,
+                "vehicle_model": policy.vehicle_model,
+                "status": policy.status,
+                "has_vollkasko": policy.has_vollkasko,
+                "has_teilkasko": policy.has_teilkasko,
+            }
+            
+    except Exception as e:
+        logger.error(f"Error getting policy: {e}", exc_info=True)
+        return {"error": str(e)}
     await websocket.accept()
     logger.info("Media stream WebSocket connection established")
     
