@@ -18,7 +18,7 @@ export function generateSpeech(text) {
       ws.send(JSON.stringify({
         type: "speak",
         text: text,
-        voice_id: "7c5U0Km7AiBgJADg",
+        voice_id: "7c5UOKm7AiBgJADg",
         output_format: "wav",
         sample_rate: 48000,
         json_config: {

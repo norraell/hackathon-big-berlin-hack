@@ -15,7 +15,7 @@ async def main():
     result = await client.tts(
         setup={
             "model_name": "default",
-            "voice_id": "7c5U0Km7AiBgJADg",
+            "voice_id": "7c5UOKm7AiBgJADg",
             "output_format": "wav"
         },
         text=text
