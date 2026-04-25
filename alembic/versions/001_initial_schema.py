@@ -40,7 +40,7 @@ def upgrade() -> None:
         sa.Column('is_vulnerable_customer', sa.Boolean(), server_default='false'),
         sa.Column('marketing_consent', sa.Boolean(), server_default='false'),
         sa.Column('customer_since', sa.Date(), nullable=False),
-        sa.Column('metadata', postgresql.JSON(astext_type=sa.Text()), nullable=True),
+        sa.Column('insurant_metadata', postgresql.JSON(astext_type=sa.Text()), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.text('now()')),
         sa.Column('updated_at', sa.DateTime(), nullable=False, server_default=sa.text('now()')),
     )
@@ -88,7 +88,7 @@ def upgrade() -> None:
         sa.Column('gross_negligence_waived', sa.Boolean(), server_default='false'),
         sa.Column('has_telematics', sa.Boolean(), server_default='false'),
         sa.Column('broker_id', sa.String(50), nullable=True),
-        sa.Column('metadata', postgresql.JSON(astext_type=sa.Text()), nullable=True),
+        sa.Column('policy_metadata', postgresql.JSON(astext_type=sa.Text()), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.text('now()')),
         sa.Column('updated_at', sa.DateTime(), nullable=False, server_default=sa.text('now()')),
     )
@@ -111,7 +111,7 @@ def upgrade() -> None:
         sa.Column('call_sid', sa.String(100), nullable=False),
         sa.Column('language', sa.String(10), nullable=False, server_default='en'),
         sa.Column('transcript', postgresql.JSON(astext_type=sa.Text()), nullable=True),
-        sa.Column('metadata', postgresql.JSON(astext_type=sa.Text()), nullable=True),
+        sa.Column('claim_metadata', postgresql.JSON(astext_type=sa.Text()), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.text('now()')),
         sa.Column('updated_at', sa.DateTime(), nullable=False, server_default=sa.text('now()')),
     )

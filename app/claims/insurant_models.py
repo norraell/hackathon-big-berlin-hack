@@ -77,7 +77,7 @@ class Insurant(Base):
     
     # Metadata
     customer_since = Column(Date, nullable=False)
-    metadata = Column(JSON, nullable=True)
+    insurant_metadata = Column(JSON, nullable=True)
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -158,7 +158,7 @@ class Policy(Base):
     
     # Metadata
     broker_id = Column(String(50), nullable=True)
-    metadata = Column(JSON, nullable=True)
+    policy_metadata = Column(JSON, nullable=True)
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

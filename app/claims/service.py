@@ -43,11 +43,11 @@ class ClaimService:
         """
         try:
             # Prepare metadata with policy/insurant info
-            metadata = claim_data.metadata or {}
+            claim_metadata = claim_data.claim_metadata or {}
             if policy_id:
-                metadata["policy_id"] = policy_id
+                claim_metadata["policy_id"] = policy_id
             if insurant_id:
-                metadata["insurant_id"] = insurant_id
+                claim_metadata["insurant_id"] = insurant_id
             
             # Create claim instance
             claim = Claim(
@@ -64,7 +64,7 @@ class ClaimService:
                 call_sid=claim_data.call_sid,
                 language=claim_data.language,
                 transcript=claim_data.transcript,
-                metadata=metadata,
+                claim_metadata=claim_metadata,
             )
             
             # Add to database

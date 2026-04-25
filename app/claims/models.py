@@ -77,7 +77,7 @@ class Claim(Base):
     
     # Transcript and metadata
     transcript = Column(JSON, nullable=True)
-    metadata = Column(JSON, nullable=True)
+    claim_metadata = Column(JSON, nullable=True)
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -105,7 +105,7 @@ class ClaimCreate(BaseModel):
     call_sid: str
     language: str = "en"
     transcript: Optional[list] = None
-    metadata: Optional[dict] = None
+    claim_metadata: Optional[dict] = None
 
 
 class ClaimUpdate(BaseModel):
@@ -122,7 +122,7 @@ class ClaimUpdate(BaseModel):
     status: Optional[ClaimStatus] = None
     estimated_damage: Optional[str] = Field(None, max_length=100)
     transcript: Optional[list] = None
-    metadata: Optional[dict] = None
+    claim_metadata: Optional[dict] = None
 
 
 class ClaimResponse(BaseModel):
