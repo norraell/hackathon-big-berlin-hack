@@ -18,7 +18,7 @@ You need to configure the following in your `.env` file:
 ```bash
 # Twilio (for phone calls)
 TWILIO_ACCOUNT_SID=your_account_sid_here          # Get from https://console.twilio.com
-TWILIO_AUTH_TOKEN=your_auth_token_here            # Get from https://console.twilio.com
+TWILIO_API_KEY_SID=your_api_key_here            # Get from https://console.twilio.com
 TWILIO_PHONE_NUMBER=+1234567890                   # Your Twilio phone number
 
 # AI Services
@@ -83,7 +83,7 @@ python scripts/generate_mock_data.py
 2. Get a phone number with Voice capabilities
 3. Copy Account SID and Auth Token to `.env`
 
-#### **Google Gemini Setup:**
+#### **Google Gemini Setup (LLM):**
 1. Go to https://aistudio.google.com/app/apikey
 2. Create API key
 3. Copy to `.env` as `GEMINI_API_KEY`
@@ -214,7 +214,7 @@ docker compose -f infra/docker-compose.yml restart postgres
 - Verify Twilio webhook URL matches your ngrok URL
 
 ### Google Cloud STT errors
-- See [`documentation/GEMINI_STT_TROUBLESHOOTING.md`](documentation/GEMINI_STT_TROUBLESHOOTING.md)
+- See [`documentation/GOOGLE_CLOUD_STT_SETUP.md`](documentation/GOOGLE_CLOUD_STT_SETUP.md)
 - Verify `GOOGLE_APPLICATION_CREDENTIALS` path is correct
 - Check service account has correct permissions
 

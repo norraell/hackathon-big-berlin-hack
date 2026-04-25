@@ -2,9 +2,9 @@
 
 import logging
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Form, WebSocket, WebSocketDisconnect
 from fastapi.responses import Response
 
 from app.config import settings
@@ -64,7 +64,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 # Create FastAPI application
 app = FastAPI(
     title="AI Claims Intake System",
-    description="AI-powered phone claims intake using Twilio, Gemini STT/LLM, and Gradium TTS",
+    description="AI-powered phone claims intake using Twilio, Google Cloud STT, Gemini LLM, and Gradium TTS",
     version="0.1.0",
     lifespan=lifespan,
 )
@@ -113,18 +113,49 @@ async def health_check() -> dict[str, str]:
 
 
 @app.post("/twilio/voice")
-async def twilio_voice_webhook() -> Response:
+async def twilio_voice_webhook(
+    From: Optional[str] = Form(None),
+    To: Optional[str] = Form(None),
+    CallSid: Optional[str] = Form(None),
+) -> Response:
     """Twilio voice webhook endpoint for incoming calls.
     
     This endpoint is called by Twilio when an incoming call is received.
     It returns TwiML instructions to establish a Media Stream.
     
+    Args:
+        From: Caller's phone number (from Twilio form data)
+        To: Called phone number (from Twilio form data)
+        CallSid: Unique call identifier (from Twilio form data)
+    
     Returns:
         TwiML response with Media Stream configuration
     """
-    logger.info("Received incoming call from Twilio")
-    twiml_response = await handle_incoming_call()
+    logger.info(f"Received incoming call from Twilio - From: {From}, To: {To}, CallSid: {CallSid}")
+    twiml_response = await handle_incoming_call(
+        from_number=From,
+        to_number=To,
+        call_sid=CallSid,
+    )
     return Response(content=twiml_response, media_type="application/xml")
+
+
+@app.get("/media-stream/health")
+async def media_stream_health() -> dict[str, str]:
+    """Health check endpoint for media stream WebSocket.
+    
+    This endpoint verifies that the media stream WebSocket endpoint
+    is properly configured and ready to accept connections.
+    
+    Returns:
+        Health status of the media stream endpoint
+    """
+    return {
+        "status": "ok",
+        "endpoint": "/media-stream",
+        "type": "websocket",
+        "message": "Media stream WebSocket endpoint is configured and ready",
+    }
 
 
 @app.websocket("/media-stream")

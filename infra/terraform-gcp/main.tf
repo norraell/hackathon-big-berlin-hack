@@ -56,7 +56,7 @@ variable "domain_name" {
 
 # Secrets
 variable "twilio_account_sid" { type = string; sensitive = true }
-variable "twilio_auth_token" { type = string; sensitive = true }
+variable "twilio_api_key_sid" { type = string; sensitive = true }
 variable "twilio_phone_number" { type = string; sensitive = true }
 variable "gemini_api_key" { type = string; sensitive = true }
 variable "groq_api_key" { type = string; sensitive = true }
@@ -221,7 +221,7 @@ resource "google_secret_manager_secret_version" "app_secrets" {
   
   secret_data = jsonencode({
     TWILIO_ACCOUNT_SID   = var.twilio_account_sid
-    TWILIO_AUTH_TOKEN    = var.twilio_auth_token
+    TWILIO_API_KEY_SID   = var.twilio_api_key_sid
     TWILIO_PHONE_NUMBER  = var.twilio_phone_number
     GEMINI_API_KEY       = var.gemini_api_key
     GROQ_API_KEY         = var.groq_api_key

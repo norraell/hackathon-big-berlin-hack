@@ -57,86 +57,42 @@ class GeminiSTTHandler:
         """Start the STT streaming session."""
         logger.info("Starting Gemini STT stream")
         
+        # Check if google-generativeai package is installed
         try:
-            # Import and configure Gemini
-            try:
-                from google import genai
-                from google.genai import types
-                from google.genai.types import Modality
-            except ImportError as e:
-                logger.error(f"Failed to import google.genai: {e}")
-                raise RuntimeError(
-                    "google-generativeai package not properly installed. "
-                    "Please ensure you have the correct version installed."
-                ) from e
-            
-            # Configure the client
-            try:
-                self.client = genai.Client(api_key=settings.gemini_api_key)
-            except Exception as e:
-                logger.error(f"Failed to create Gemini client: {e}")
-                raise RuntimeError(
-                    f"Failed to initialize Gemini client. Check your API key. Error: {e}"
-                ) from e
-            
-            # Configure live session with proper error handling
-            try:
-                config = types.LiveConnectConfig(
-                    response_modalities=[Modality.AUDIO],
-                    speech_config=types.SpeechConfig(
-                        voice_config=types.VoiceConfig(
-                            prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                                voice_name="Puck"
-                            )
-                        )
-                    ),
-                )
+            import google.generativeai as genai
+        except ImportError as e:
+            logger.error(f"Failed to import google.generativeai: {e}")
+            raise RuntimeError(
+                "google-generativeai package not properly installed. "
+                "Install with: pip install google-generativeai"
+            ) from e
+        
+        # Raise clear error about Live API not being supported
+        error_msg = (
+            "\n" + "="*70 + "\n"
+            "ERROR: Gemini Live API is not available\n"
+            "="*70 + "\n\n"
+            "The Gemini STT handler requires the Gemini Live API, which is not\n"
+            "supported in the current google-generativeai package (v0.8.3).\n\n"
+            "SOLUTION: Use Google Cloud Speech-to-Text instead\n\n"
+            "1. Set the STT provider in your .env file:\n"
+            "   STT_PROVIDER=google_cloud\n\n"
+            "2. Set up Google Cloud credentials:\n"
+            "   - Create a service account in Google Cloud Console\n"
+            "   - Download the JSON key file\n"
+            "   - Set GOOGLE_APPLICATION_CREDENTIALS environment variable:\n"
+            "     export GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json\n\n"
+            "3. See documentation/GOOGLE_CLOUD_STT_SETUP.md for detailed setup\n\n"
+            "ALTERNATIVE: Wait for Gemini Live API support\n"
+            "The Gemini Live API is experimental and not yet available in the\n"
+            "stable google-generativeai package. Check for updates at:\n"
+            "https://ai.google.dev/docs\n"
+            "="*70
+        )
+        
+        logger.error(error_msg)
+        raise RuntimeError(error_msg)
                 
-                # Create session context
-                self._session_ctx = self.client.aio.live.connect(
-                    model="models/gemini-2.5-flash-native-audio-latest",
-                    config=config
-                )
-                
-                # Enter the context to get the session
-                self._session = await self._session_ctx.__aenter__()
-                
-            except Exception as e:
-                logger.error(f"Failed to create Gemini Live session: {e}", exc_info=True)
-                
-                # Check for common error causes
-                error_msg = str(e)
-                if "1011" in error_msg or "Internal error" in error_msg:
-                    raise RuntimeError(
-                        "Gemini Live API returned internal error (1011). This may be due to:\n"
-                        "1. API not available in your region\n"
-                        "2. Invalid API key or insufficient permissions\n"
-                        "3. Model 'gemini-2.5-flash-native-audio-latest' not accessible\n"
-                        "4. Live API not enabled for your account\n"
-                        "Please check your Gemini API configuration and try:\n"
-                        "- Verifying your API key at https://aistudio.google.com/apikey\n"
-                        "- Ensuring Live API access is enabled\n"
-                        "- Trying a different model if available"
-                    ) from e
-                else:
-                    raise RuntimeError(f"Failed to connect to Gemini Live API: {e}") from e
-            
-            self.is_streaming = True
-            
-            # Start processing tasks
-            send_task = asyncio.create_task(self._send_audio())
-            receive_task = asyncio.create_task(self._receive_transcripts())
-            
-            # Store tasks for cleanup
-            self.tasks = [send_task, receive_task]
-            
-            logger.info("Gemini STT stream started successfully")
-            
-        except Exception as e:
-            logger.error(f"Error starting Gemini STT: {e}", exc_info=True)
-            # Clean up on error
-            await self._cleanup()
-            raise
 
     async def _cleanup(self) -> None:
         """Clean up resources."""

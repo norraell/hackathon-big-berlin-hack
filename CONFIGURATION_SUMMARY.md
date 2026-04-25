@@ -46,9 +46,10 @@
    
    Required values:
    - `TWILIO_ACCOUNT_SID` - From https://console.twilio.com
-   - `TWILIO_AUTH_TOKEN` - From https://console.twilio.com
+   - `TWILIO_API_KEY_SID` - From https://console.twilio.com
    - `TWILIO_PHONE_NUMBER` - Your Twilio phone number
-   - `GEMINI_API_KEY` - From https://aistudio.google.com/app/apikey
+   - `GEMINI_API_KEY` - From https://aistudio.google.com/app/apikey (LLM)
+   - `GOOGLE_APPLICATION_CREDENTIALS` - Path to your Google Cloud STT service account JSON
    - `GRADIUM_API_KEY` - From Gradium dashboard
    - `SECRET_KEY` - Generate with: `python -c "import secrets; print(secrets.token_hex(32))"`
 
@@ -183,6 +184,6 @@ docker compose -f infra/docker-compose.yml up
 
 **Status:** ✅ Project is configured and ready for setup
 
-**Next Action:** Fill in your API keys in `.env` and run `./scripts/quick_setup.sh`
+**Next Action:** Fill in your `.env` credentials, including Google Cloud STT, and run `./scripts/quick_setup.sh`
 
 **Time to Production:** ~30 minutes (including Google Cloud STT setup)

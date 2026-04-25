@@ -1,12 +1,12 @@
 # AI Claims Intake System
 
-An AI-powered phone claims intake system using Twilio, Google Gemini STT/LLM, and Gradium TTS.
+An AI-powered phone claims intake system using Twilio, Google Cloud STT, Gemini LLM, and Gradium TTS.
 
 ## Overview
 
 This system provides an automated phone-based claims intake service that:
 - Accepts incoming calls via Twilio
-- Transcribes speech using Google Gemini STT
+- Transcribes speech using Google Cloud Speech-to-Text
 - Processes conversations using Google Gemini LLM
 - Synthesizes responses using Gradium TTS
 - Manages dialog flow through a state machine
@@ -33,8 +33,11 @@ See [`architecture.md`](architecture.md) for detailed architecture documentation
 - PostgreSQL 14+
 - Twilio account with phone number
 - API keys for:
-  - Google Gemini (for STT and LLM)
+  - Google Gemini (for LLM)
   - Gradium (for TTS)
+  - Google Cloud (for Speech-to-Text) - **REQUIRED**
+
+> **⚠️ IMPORTANT**: The Gemini Live API for speech-to-text is not yet available in the stable package. You **must** use Google Cloud Speech-to-Text. See [STT Configuration Guide](documentation/STT_CONFIGURATION.md) for setup instructions.
 
 ## Installation
 
@@ -66,6 +69,18 @@ pip install -e ".[dev]"
 cp .env.example .env
 # Edit .env with your actual credentials
 ```
+
+**IMPORTANT**: Configure Speech-to-Text provider:
+
+```bash
+# In your .env file:
+STT_PROVIDER=google_cloud
+
+# Set up Google Cloud credentials (see documentation/STT_CONFIGURATION.md)
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/service-account-key.json
+```
+
+> **📖 See [STT Configuration Guide](documentation/STT_CONFIGURATION.md)** for detailed setup instructions.
 
 ### 5. Start infrastructure
 
@@ -129,7 +144,8 @@ All configuration is done via environment variables. See [`.env.example`](.env.e
 
 Key configurations:
 - `TWILIO_*`: Twilio credentials and phone number
-- `GEMINI_API_KEY`: Google Gemini API key (for STT and LLM)
+- `GEMINI_API_KEY`: Google Gemini API key (for LLM)
+- `GOOGLE_APPLICATION_CREDENTIALS`: Google Cloud Speech-to-Text service account path
 - `GRADIUM_API_KEY`: Gradium TTS API key
 - `DATABASE_URL`: PostgreSQL connection string
 - `SUPPORTED_LANGUAGES`: Comma-separated language codes
@@ -162,7 +178,7 @@ pytest tests/test_dialog_flow.py
 │   ├── main.py              # FastAPI application
 │   ├── config.py            # Configuration management
 │   ├── telephony/           # Twilio integration
-│   ├── stt/                 # Speech-to-text (Gemini)
+│   ├── stt/                 # Speech-to-text (Google Cloud)
 │   ├── llm/                 # Language model (Gemini)
 │   ├── tts/                 # Text-to-speech (Gradium)
 │   ├── dialog/              # Dialog state management

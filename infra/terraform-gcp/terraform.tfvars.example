@@ -15,7 +15,7 @@ project_name   = "claims-intake"
 # ============================================================================
 
 twilio_account_sid  = "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-twilio_auth_token   = "your_twilio_auth_token"
+twilio_api_key_sid  = "your_twilio_api_key_sid"
 twilio_phone_number = "+1234567890"
 
 # ============================================================================

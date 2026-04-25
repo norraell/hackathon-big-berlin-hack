@@ -33,9 +33,9 @@ async def handle_incoming_call(
     
     # Construct the WebSocket URL for Media Streams
     # Replace http:// with ws:// and https:// with wss://
-    ws_url = settings.public_base_url.replace("https://", "wss://").replace(
-        "http://", "ws://"
-    )
+    # Remove trailing slash to avoid double slashes
+    base_url = settings.public_base_url.rstrip("/")
+    ws_url = base_url.replace("https://", "wss://").replace("http://", "ws://")
     media_stream_url = f"{ws_url}/media-stream"
     
     # Generate TwiML response

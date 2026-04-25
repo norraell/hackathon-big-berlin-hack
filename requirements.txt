@@ -18,14 +18,13 @@ dnspython==2.8.0
 email-validator==2.3.0
 fastapi==0.136.1
 frozenlist==1.8.0
-google-ai-generativelanguage==0.6.15
+google-ai-generativelanguage==0.6.10
 google-api-core==2.30.3
 google-api-python-client==2.194.0
 google-auth==2.49.2
 google-auth-httplib2==0.3.1
-google-generativeai==0.8.6
-google-genai==1.73.1
 google-cloud-speech==2.28.0
+google-generativeai==0.8.3
 googleapis-common-protos==1.74.0
 greenlet==3.4.0
 grpcio==1.80.0
