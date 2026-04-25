@@ -1,0 +1,1 @@
+"""Claims module for managing insurance claims."""
