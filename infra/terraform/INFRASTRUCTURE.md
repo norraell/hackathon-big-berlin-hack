@@ -252,7 +252,7 @@ This document describes the AWS infrastructure architecture for the AI Claims In
 3. **Audio Processing**
    - Receive μ-law audio from Twilio
    - Convert to PCM for STT (Gemini)
-   - Process with LLM (Groq)
+   - Process with LLM (Gemini)
    - Generate speech with TTS (Gradium)
    - Convert back to μ-law for Twilio
 

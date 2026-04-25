@@ -2,7 +2,7 @@
 
 from typing import Any
 
-# Tool definitions for Groq function calling
+# Tool definitions for Gemini function calling
 TOOLS: list[dict[str, Any]] = [
     {
         "type": "function",

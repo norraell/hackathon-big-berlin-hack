@@ -1,13 +1,13 @@
 # AI Claims Intake System
 
-An AI-powered phone claims intake system using Twilio, Google Gemini STT, Groq LLM, and Gradium TTS.
+An AI-powered phone claims intake system using Twilio, Google Gemini STT/LLM, and Gradium TTS.
 
 ## Overview
 
 This system provides an automated phone-based claims intake service that:
 - Accepts incoming calls via Twilio
 - Transcribes speech using Google Gemini STT
-- Processes conversations using Groq LLM
+- Processes conversations using Google Gemini LLM
 - Synthesizes responses using Gradium TTS
 - Manages dialog flow through a state machine
 - Stores claims in PostgreSQL
@@ -34,9 +34,8 @@ See [`architecture.md`](architecture.md) for detailed architecture documentation
 - Redis 7+
 - Twilio account with phone number
 - API keys for:
-  - Google Gemini
-  - Groq
-  - Gradium
+  - Google Gemini (for STT and LLM)
+  - Gradium (for TTS)
 
 ## Installation
 
@@ -112,8 +111,7 @@ All configuration is done via environment variables. See [`.env.example`](.env.e
 
 Key configurations:
 - `TWILIO_*`: Twilio credentials and phone number
-- `GEMINI_API_KEY`: Google Gemini API key
-- `GROQ_API_KEY`: Groq API key
+- `GEMINI_API_KEY`: Google Gemini API key (for STT and LLM)
 - `GRADIUM_API_KEY`: Gradium TTS API key
 - `DATABASE_URL`: PostgreSQL connection string
 - `REDIS_URL`: Redis connection string
@@ -148,7 +146,7 @@ pytest tests/test_dialog_flow.py
 │   ├── config.py            # Configuration management
 │   ├── telephony/           # Twilio integration
 │   ├── stt/                 # Speech-to-text (Gemini)
-│   ├── llm/                 # Language model (Groq)
+│   ├── llm/                 # Language model (Gemini)
 │   ├── tts/                 # Text-to-speech (Gradium)
 │   ├── dialog/              # Dialog state management
 │   ├── claims/              # Claims models and service

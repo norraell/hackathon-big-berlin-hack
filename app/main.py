@@ -50,7 +50,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 # Create FastAPI application
 app = FastAPI(
     title="AI Claims Intake System",
-    description="AI-powered phone claims intake using Twilio, Gemini STT, Groq LLM, and Gradium TTS",
+    description="AI-powered phone claims intake using Twilio, Gemini STT/LLM, and Gradium TTS",
     version="0.1.0",
     lifespan=lifespan,
 )

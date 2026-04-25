@@ -1,9 +1,11 @@
-"""Groq LLM client for streaming completions with function calling."""
+"""Gemini LLM client for streaming completions with function calling."""
 
 import asyncio
 import json
 import logging
 from typing import AsyncGenerator, Optional, Callable, Any
+
+import google.generativeai as genai
 
 from app.config import settings
 from app.llm.prompts import get_system_prompt
@@ -12,8 +14,8 @@ from app.llm.tools import TOOLS, validate_tool_call
 logger = logging.getLogger(__name__)
 
 
-class GroqLLMClient:
-    """Handles streaming LLM completions using Groq.
+class GeminiLLMClient:
+    """Handles streaming LLM completions using Google Gemini.
     
     This class manages:
     - Streaming chat completions
@@ -28,7 +30,7 @@ class GroqLLMClient:
         on_token: Optional[Callable[[str], None]] = None,
         on_tool_call: Optional[Callable[[str, dict[str, Any]], None]] = None,
     ) -> None:
-        """Initialize the Groq LLM client.
+        """Initialize the Gemini LLM client.
         
         Args:
             language: Language code for system prompt
@@ -44,31 +46,36 @@ class GroqLLMClient:
         
         # System prompt
         self.system_prompt = get_system_prompt(language)
-        self.messages.append({
-            "role": "system",
-            "content": self.system_prompt,
-        })
         
-        # Groq client (to be initialized)
-        self.client = None
+        # Gemini model and chat
+        self.model = None
+        self.chat = None
         
         # Streaming state
         self.current_response = ""
         self.is_streaming = False
         
-        logger.info(f"GroqLLMClient initialized with language: {language}")
+        logger.info(f"GeminiLLMClient initialized with language: {language}")
 
     async def initialize(self) -> None:
-        """Initialize the Groq client."""
+        """Initialize the Gemini client."""
         try:
-            # TODO: Initialize Groq client
-            # from groq import AsyncGroq
-            # self.client = AsyncGroq(api_key=settings.groq_api_key)
+            # Configure Gemini API
+            genai.configure(api_key=settings.gemini_api_key)
             
-            logger.info("Groq client initialized")
+            # Initialize model with system instruction
+            self.model = genai.GenerativeModel(
+                model_name="gemini-1.5-flash",
+                system_instruction=self.system_prompt,
+            )
+            
+            # Start chat session
+            self.chat = self.model.start_chat(history=[])
+            
+            logger.info("Gemini client initialized")
             
         except Exception as e:
-            logger.error(f"Error initializing Groq client: {e}", exc_info=True)
+            logger.error(f"Error initializing Gemini client: {e}", exc_info=True)
             raise
 
     async def add_user_message(self, content: str) -> None:
@@ -133,39 +140,50 @@ class GroqLLMClient:
         Yields:
             Individual tokens as they are generated
         """
-        if not self.client:
+        if not self.chat:
             await self.initialize()
         
         self.is_streaming = True
         self.current_response = ""
         
         try:
-            # TODO: Implement actual Groq streaming
-            # stream = await self.client.chat.completions.create(
-            #     model="llama-3.3-70b-versatile",
-            #     messages=self.messages,
-            #     tools=TOOLS,
-            #     max_tokens=max_tokens,
-            #     temperature=temperature,
-            #     stream=True,
-            # )
+            # Get the last user message
+            last_message = None
+            for msg in reversed(self.messages):
+                if msg["role"] == "user":
+                    last_message = msg["content"]
+                    break
             
-            # Placeholder: simulate streaming
+            if not last_message:
+                logger.warning("No user message found for streaming")
+                return
+            
             logger.info("Starting LLM completion stream")
             
-            # Simulate streaming tokens
-            sample_response = "Thank you for calling. I'm an AI assistant here to help you file your claim."
-            for token in sample_response.split():
-                token_with_space = token + " "
-                self.current_response += token_with_space
-                
-                if self.on_token:
-                    self.on_token(token_with_space)
-                
-                yield token_with_space
-                
-                # Simulate token delay
-                await asyncio.sleep(0.05)
+            # Configure generation
+            generation_config = genai.GenerationConfig(
+                max_output_tokens=max_tokens,
+                temperature=temperature,
+            )
+            
+            # Stream response from Gemini
+            response = await asyncio.to_thread(
+                self.chat.send_message,
+                last_message,
+                generation_config=generation_config,
+                stream=True,
+            )
+            
+            # Process streaming chunks
+            for chunk in response:
+                if chunk.text:
+                    token = chunk.text
+                    self.current_response += token
+                    
+                    if self.on_token:
+                        self.on_token(token)
+                    
+                    yield token
             
             # Add complete response to history
             await self.add_assistant_message(self.current_response.strip())
@@ -195,28 +213,60 @@ class GroqLLMClient:
         Returns:
             Tuple of (response_text, tool_calls)
         """
-        if not self.client:
+        if not self.chat:
             await self.initialize()
         
         try:
-            # TODO: Implement actual Groq completion with tools
-            # response = await self.client.chat.completions.create(
-            #     model="llama-3.3-70b-versatile",
-            #     messages=self.messages,
-            #     tools=TOOLS,
-            #     max_tokens=max_tokens,
-            #     temperature=temperature,
-            # )
+            # Get the last user message
+            last_message = None
+            for msg in reversed(self.messages):
+                if msg["role"] == "user":
+                    last_message = msg["content"]
+                    break
             
-            # Placeholder: simulate response
+            if not last_message:
+                logger.warning("No user message found for completion")
+                return None, None
+            
             logger.info("Getting LLM completion with tools")
             
-            # Simulate a response without tool calls
-            response_text = "I understand. Let me help you with that."
+            # Configure generation
+            generation_config = genai.GenerationConfig(
+                max_output_tokens=max_tokens,
+                temperature=temperature,
+            )
+            
+            # Get response from Gemini (non-streaming for tool calls)
+            response = await asyncio.to_thread(
+                self.chat.send_message,
+                last_message,
+                generation_config=generation_config,
+            )
+            
+            # Extract text response
+            response_text = response.text if response.text else None
+            
+            # Check for function calls (Gemini's tool calling)
             tool_calls = None
+            if hasattr(response, 'candidates') and response.candidates:
+                candidate = response.candidates[0]
+                if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+                    for part in candidate.content.parts:
+                        if hasattr(part, 'function_call'):
+                            # Convert Gemini function call to our format
+                            if tool_calls is None:
+                                tool_calls = []
+                            tool_calls.append({
+                                "id": f"call_{len(tool_calls)}",
+                                "function": {
+                                    "name": part.function_call.name,
+                                    "arguments": json.dumps(dict(part.function_call.args)),
+                                }
+                            })
             
             # Add to history
-            await self.add_assistant_message(response_text)
+            if response_text:
+                await self.add_assistant_message(response_text)
             
             return response_text, tool_calls
             
@@ -276,12 +326,11 @@ class GroqLLMClient:
         
         self.language = language
         
-        # Update system prompt
+        # Update system prompt and reinitialize
         self.system_prompt = get_system_prompt(language)
-        self.messages[0] = {
-            "role": "system",
-            "content": self.system_prompt,
-        }
+        
+        # Reinitialize model with new system instruction
+        await self.initialize()
 
     def get_conversation_history(self) -> list[dict[str, Any]]:
         """Get the current conversation history.
@@ -295,12 +344,13 @@ class GroqLLMClient:
         """Clear the conversation history.
         
         Args:
-            keep_system: Whether to keep the system prompt
+            keep_system: Whether to keep the system prompt (reinitialize chat)
         """
-        if keep_system:
-            self.messages = [self.messages[0]]
-        else:
-            self.messages = []
+        self.messages = []
+        
+        # Restart chat session
+        if self.model and keep_system:
+            self.chat = self.model.start_chat(history=[])
         
         logger.info("Conversation history cleared")
 

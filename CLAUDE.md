@@ -25,14 +25,14 @@ FastAPI WebSocket server (this repo)
     │
     ├─► Gemini STT (streaming, multilingual)        # speech → text
     │
-    ├─► Groq LLM (Llama 3.x or similar, low latency) # dialog policy + tool calls
+    ├─► Google Gemini LLM (gemini-1.5-flash) # dialog policy + tool calls
     │
     └─► Gradium TTS (WebSocket, streaming PCM)       # text → speech
     │
     └─► Postgres + Redis                             # claims, sessions, call state
 ```
 
-Note on the LLM: Gradium is confirmed as the TTS provider. The LLM choice (Groq) is the maintainer's recommendation based on latency requirements; if a different provider is required, update `app/llm/client.py` and this section together.
+Note on the LLM: Using Google Gemini for both STT and LLM simplifies the architecture and reduces API dependencies. Gemini 1.5 Flash provides good latency for conversational AI.
 
 ## 3. Tech stack
 
@@ -42,7 +42,7 @@ Note on the LLM: Gradium is confirmed as the TTS provider. The LLM choice (Groq)
 | Web | FastAPI + Uvicorn | Native async, WebSocket support for Twilio Media Streams |
 | Telephony | Twilio Programmable Voice + Media Streams | Inbound PSTN, bidirectional audio |
 | STT | Google Gemini (`gemini-2.0-flash` or audio-capable model) | Multilingual, streaming |
-| LLM | Groq (`llama-3.3-70b-versatile` or similar) | Sub-second token latency is critical for natural turn-taking |
+| LLM | Google Gemini (`gemini-1.5-flash`) | Fast response times, function calling support, same API as STT |
 | TTS | Gradium via official `gradium` Python SDK (`pip install gradium`) | Sub-300 ms time-to-first-audio, word-level timestamps for accurate barge-in, connection multiplexing across turns; SDK wraps the WebSocket protocol |
 | Storage | Postgres (claims, transcripts), Redis (live session state) | — |
 | Audio | `audioop` / `numpy` for μ-law ↔ PCM resampling | Twilio sends μ-law 8 kHz; STT/TTS expect 16 kHz PCM |
@@ -64,7 +64,7 @@ Note on the LLM: Gradium is confirmed as the TTS provider. The LLM choice (Groq)
 │   ├── stt/
 │   │   └── gemini_stt.py      # streaming Gemini STT wrapper
 │   ├── llm/
-│   │   ├── client.py          # Groq client, streaming completions
+│   │   ├── client.py          # Gemini client, streaming completions
 │   │   ├── prompts.py         # system prompt, language-specific snippets
 │   │   └── tools.py           # tool/function definitions (create_claim, etc.)
 │   ├── tts/
@@ -119,7 +119,7 @@ We use the official `gradium` Python SDK (`pip install gradium`). The SDK wraps 
 - **Word-level timestamps drive barge-in.** The SDK surfaces text events with `start_s` / `stop_s` aligned to the audio stream. Store the latest `(text, start_s, stop_s)` tuples on the `Session` and truncate the assistant transcript at the interruption point when the caller barges in.
 - **Languages**: Gradium TTS currently supports en, fr, de, es, pt. `SUPPORTED_LANGUAGES` is constrained to this set. If STT detects a language outside this set, the agent apologizes in English and offers a human callback — it must not silently fall back to a wrong-language voice.
 - **Voice selection per language**: maintain a `LANGUAGE_VOICE_MAP: dict[str, str]` in config (voice IDs are picked once in Gradium Studio and pasted in). When the session language changes mid-call, tear down and re-open the SDK connection with the new `voice_id` (Gradium's `setup` is one-shot per connection).
-- **Latency target**: Gradium quotes ~258 ms p50 TTFA, ~214 ms with multiplexing. Combined with Groq (~200 ms first-token) and Gemini STT, we have headroom under the 1500 ms p95 budget — but only if we stream end-to-end. Never buffer a full LLM response before starting TTS; pipe LLM tokens into the SDK as they arrive.
+- **Latency target**: Gradium quotes ~258 ms p50 TTFA, ~214 ms with multiplexing. Combined with Gemini LLM streaming and Gemini STT, we have headroom under the 1500 ms p95 budget — but only if we stream end-to-end. Never buffer a full LLM response before starting TTS; pipe LLM tokens into the SDK as they arrive.
 - **Pronunciation**: Gradium supports a custom pronunciation dictionary and `rewrite_rules` (passed via `json_config`) for dates/times/numbers/codes. **Enable rewrite rules for the active language**, and add the claim ID format to a custom pronunciation entry once the format is finalized — readback accuracy of claim IDs is critical.
 
 ## 7. The dialog state machine
@@ -144,7 +144,6 @@ TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
 TWILIO_PHONE_NUMBER=
 GEMINI_API_KEY=
-GROQ_API_KEY=
 GRADIUM_API_KEY=
 GRADIUM_VOICE_ID=              # default voice ID copied from Gradium Studio (like an ElevenLabs voice ID)
 # GRADIUM_ENDPOINT=            # optional, only set to override the SDK default (e.g. for staging)

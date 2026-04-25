@@ -10,7 +10,7 @@ Read `CLAUDE.md` end to end before doing anything else. Then bootstrap the backe
 
 1. **Project skeleton** matching the layout in `CLAUDE.md` section 4. Empty modules are fine where noted, but each must have a docstring describing what goes in it.
 
-2. **`pyproject.toml`** with: `fastapi`, `uvicorn[standard]`, `twilio`, `google-genai`, `groq`, `gradium`, `pydantic-settings`, `sqlalchemy[asyncio]`, `asyncpg`, `alembic`, `redis`, `numpy`, `python-multipart`, `websockets`, `httpx`. Dev deps: `pytest`, `pytest-asyncio`, `ruff`, `mypy`. The `websockets` dep is for the Twilio Media Streams server side, not Gradium — Gradium goes through its official SDK.
+2. **`pyproject.toml`** with: `fastapi`, `uvicorn[standard]`, `twilio`, `google-generativeai`, `gradium`, `pydantic-settings`, `sqlalchemy[asyncio]`, `asyncpg`, `alembic`, `redis`, `numpy`, `python-multipart`, `websockets`, `httpx`. Dev deps: `pytest`, `pytest-asyncio`, `ruff`, `mypy`. The `websockets` dep is for the Twilio Media Streams server side, not Gradium — Gradium goes through its official SDK.
 
 3. **`app/config.py`** — `Settings` class via `pydantic-settings`, loading every variable listed in `CLAUDE.md` section 8. Validate that required keys are present at startup. Validate that `GRADIUM_VOICE_ID` is set (or that a per-language voice map is configured), and that `SUPPORTED_LANGUAGES` is a subset of Gradium's supported set (en, fr, de, es, pt).
 

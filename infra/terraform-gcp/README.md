@@ -63,7 +63,6 @@ twilio_phone_number = "+1234567890"
 
 # Required: AI Service API Keys
 gemini_api_key  = "your_actual_key"
-groq_api_key    = "your_actual_key"
 gradium_api_key = "your_actual_key"
 
 # Required: Application Secret

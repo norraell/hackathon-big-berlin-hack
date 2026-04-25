@@ -22,7 +22,6 @@ class Settings(BaseSettings):
 
     # AI Service API Keys
     gemini_api_key: str = Field(..., description="Google Gemini API Key")
-    groq_api_key: str = Field(..., description="Groq API Key")
     gradium_api_key: str = Field(..., description="Gradium API Key")
 
     # Gradium TTS Configuration
