@@ -33,11 +33,8 @@ See [`architecture.md`](architecture.md) for detailed architecture documentation
 - PostgreSQL 14+
 - Twilio account with phone number
 - API keys for:
-  - Google Gemini (for LLM)
+  - Google Gemini (for LLM and STT)
   - Gradium (for TTS)
-  - Google Cloud (for Speech-to-Text) - **REQUIRED**
-
-> **⚠️ IMPORTANT**: The Gemini Live API for speech-to-text is not yet available in the stable package. You **must** use Google Cloud Speech-to-Text. See [STT Configuration Guide](documentation/STT_CONFIGURATION.md) for setup instructions.
 
 ## Installation
 
@@ -70,17 +67,9 @@ cp .env.example .env
 # Edit .env with your actual credentials
 ```
 
-**IMPORTANT**: Configure Speech-to-Text provider:
+The system uses Gemini for speech-to-text by default (via your `GEMINI_API_KEY`). No additional STT credentials are required.
 
-```bash
-# In your .env file:
-STT_PROVIDER=google_cloud
-
-# Set up Google Cloud credentials (see documentation/STT_CONFIGURATION.md)
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/service-account-key.json
-```
-
-> **📖 See [STT Configuration Guide](documentation/STT_CONFIGURATION.md)** for detailed setup instructions.
+> **Note**: For production deployments with better streaming performance, you can optionally use Google Cloud Speech-to-Text. See [STT Configuration Guide](documentation/STT_CONFIGURATION.md) for details.
 
 ### 5. Start infrastructure
 
