@@ -216,28 +216,119 @@ alembic upgrade head
 
 ## Deployment
 
+### Production Deployment with Terraform
+
+#### Google Cloud Platform (GCP) - Recommended
+
+For production deployment to GCP using Infrastructure as Code (IaC), see:
+
+- **[GCP Terraform Guide](infra/terraform-gcp/README.md)** - Complete GCP infrastructure setup
+
+Quick start:
+
+```bash
+cd infra/terraform-gcp
+
+# Configure variables
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your GCP project ID and credentials
+
+# Deploy everything
+make deploy-all
+
+# Or step by step:
+make init
+make apply
+make deploy-app
+make db-migrate
+```
+
+The GCP Terraform configuration includes:
+- **VPC Network** with private Google access
+- **Cloud SQL PostgreSQL** with automated backups
+- **Memorystore Redis** for session management
+- **Cloud Run** for serverless container hosting
+- **Secret Manager** for credential management
+- **Cloud Monitoring** and logging
+
+**Estimated costs:**
+- Development: ~$50-80/month
+- Production: ~$200-400/month
+
+#### Amazon Web Services (AWS) - Alternative
+
+For AWS deployment, see:
+
+- **[AWS Terraform Guide](infra/terraform/README.md)** - Complete AWS infrastructure setup
+- **[Deployment Guide](infra/DEPLOYMENT.md)** - Step-by-step deployment instructions
+
+Quick start:
+
+```bash
+cd infra/terraform
+
+# Configure variables
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your credentials
+
+# Deploy infrastructure
+make init
+make apply
+
+# Deploy application
+make deploy-app
+make db-migrate
+
+# Monitor
+make logs
+```
+
+The Terraform configuration includes:
+- **VPC** with multi-AZ setup
+- **RDS PostgreSQL** with automated backups
+- **ElastiCache Redis** for session management
+- **ECS Fargate** for containerized application
+- **Application Load Balancer** with WebSocket support
+- **CloudWatch** monitoring and alerting
+- **Secrets Manager** for credential management
+
+### Local Development Deployment
+
+For local development, use Docker Compose:
+
+```bash
+docker compose -f infra/docker-compose.yml up
+```
+
 ### Environment Variables
 
 Ensure all required environment variables are set in production:
-- Use strong `SECRET_KEY`
+- Use strong `SECRET_KEY` (min 32 characters)
 - Set `LOG_LEVEL=INFO` or `WARNING`
 - Configure proper `DATABASE_URL` with SSL
 - Set `PUBLIC_BASE_URL` to your production domain
+- All API keys stored in AWS Secrets Manager (when using Terraform)
 
 ### Security Considerations
 
-- Enable HTTPS/WSS in production
-- Rotate API keys regularly
-- Implement rate limiting
-- Monitor for suspicious activity
-- Regular security audits
+- Enable HTTPS/WSS in production (handled by ALB + ACM)
+- Rotate API keys regularly (use AWS Secrets Manager rotation)
+- Implement rate limiting (configure in ALB)
+- Monitor for suspicious activity (CloudWatch alarms)
+- Regular security audits (AWS Security Hub)
+- Enable deletion protection for production resources
+- Use IAM roles with least-privilege access
 
 ### Monitoring
 
-- Monitor latency metrics (p95 < 1500ms)
-- Track STT confidence scores
-- Monitor error rates
+Production monitoring includes:
+- Monitor latency metrics (p95 < 1500ms) via CloudWatch
+- Track STT confidence scores in application logs
+- Monitor error rates with CloudWatch alarms
 - Track claim creation success rate
+- CloudWatch Dashboard for real-time metrics
+- SNS alerts for critical issues
+- X-Ray tracing for distributed debugging
 
 ## Troubleshooting
 

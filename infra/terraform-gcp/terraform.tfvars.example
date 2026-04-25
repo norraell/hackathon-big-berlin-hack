@@ -1,0 +1,54 @@
+# Example Terraform Variables File for GCP
+# Copy this file to terraform.tfvars and fill in your actual values
+
+# ============================================================================
+# REQUIRED: GCP Configuration
+# ============================================================================
+
+gcp_project_id = "your-gcp-project-id"
+gcp_region     = "us-central1"
+environment    = "dev"
+project_name   = "claims-intake"
+
+# ============================================================================
+# REQUIRED: Twilio Configuration
+# ============================================================================
+
+twilio_account_sid  = "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+twilio_auth_token   = "your_twilio_auth_token"
+twilio_phone_number = "+1234567890"
+
+# ============================================================================
+# REQUIRED: AI Service API Keys
+# ============================================================================
+
+gemini_api_key  = "your_gemini_api_key"
+groq_api_key    = "your_groq_api_key"
+gradium_api_key = "your_gradium_api_key"
+
+# ============================================================================
+# REQUIRED: Application Secret Key
+# ============================================================================
+
+secret_key = "generate_a_strong_random_key_minimum_32_characters"
+
+# ============================================================================
+# OPTIONAL: Domain Configuration
+# ============================================================================
+
+domain_name = ""  # e.g., "claims.yourdomain.com"
+
+# ============================================================================
+# NOTES
+# ============================================================================
+
+# Cost Optimization Tips:
+# - For dev: Use environment = "dev" (smaller instances, no HA)
+# - For prod: Use environment = "prod" (larger instances, HA enabled)
+#
+# Estimated Monthly Costs:
+# - Development: $50-80/month
+# - Production: $200-400/month
+#
+# To generate a secure secret_key:
+# python -c "import secrets; print(secrets.token_urlsafe(32))"
