@@ -138,6 +138,21 @@ async def media_stream_endpoint(websocket: WebSocket) -> None:
     Args:
         websocket: WebSocket connection from Twilio
     """
+    await websocket.accept()
+    logger.info("Media stream WebSocket connection established")
+    
+    handler = MediaStreamHandler(websocket)
+    
+    try:
+        await handler.handle_stream()
+    except WebSocketDisconnect:
+        logger.info("Media stream WebSocket disconnected")
+    except Exception as e:
+        logger.error(f"Error in media stream: {e}", exc_info=True)
+    finally:
+        await handler.cleanup()
+        logger.info("Media stream handler cleaned up")
+
 
 @app.post("/api/verify-policy")
 async def verify_policy_endpoint(
@@ -216,20 +231,6 @@ async def get_policy_endpoint(policy_number: str) -> dict:
     except Exception as e:
         logger.error(f"Error getting policy: {e}", exc_info=True)
         return {"error": str(e)}
-    await websocket.accept()
-    logger.info("Media stream WebSocket connection established")
-    
-    handler = MediaStreamHandler(websocket)
-    
-    try:
-        await handler.handle_stream()
-    except WebSocketDisconnect:
-        logger.info("Media stream WebSocket disconnected")
-    except Exception as e:
-        logger.error(f"Error in media stream: {e}", exc_info=True)
-    finally:
-        await handler.cleanup()
-        logger.info("Media stream handler cleaned up")
 
 
 @app.post("/twilio/status")
