@@ -219,6 +219,37 @@ Build in this order:
 
 For the first version, do **not** fine-tune a large model yet. Start with the fast intent router, because Gemini can handle the natural conversation while your backend handles insurance-specific routing.
 
+ `bitext/Mistral-7B-Insurance`. It is a fine-tuned version of `mistralai/Mistral-7B-Instruct-v0.2` 
+
+So the correct answer is:
+
+
+### 1. Use Gemini only + Bitext dataset
+
+No need to download this model. You train a small router yourself.
+
+### 2. Use Hugging Face model through API
+
+No need to download locally **if** the model is available through Hugging Face Inference/Endpoint or you deploy it there.
+
+### 3. Download and run locally
+
+You need to download it if you want to self-host. But it is around **14.5 GB**, as your screenshot shows, and needs strong GPU memory.
+
+## Best choice for you
+
+For an MVP:
+
+```text
+Gemini API + small Bitext-trained classifier = best
+```
+
+Do **not** start by downloading `Mistral-7B-Insurance`.
+
+Use that model only if you want a separate insurance-specialist LLM behind Gemini. Then I’d recommend using Hugging Face Inference Endpoint first, not local hosting.
+
+
+
 [1]: https://huggingface.co/datasets/bitext/Bitext-insurance-llm-chatbot-training-dataset?utm_source=chatgpt.com "bitext/Bitext-insurance-llm-chatbot-training-dataset"
 [2]: https://ai.google.dev/gemini-api/docs/function-calling?utm_source=chatgpt.com "Function calling with the Gemini API | Google AI for Developers"
 [3]: https://ai.google.dev/gemini-api/docs/live-api?utm_source=chatgpt.com "Gemini Live API overview - Google AI for Developers"
