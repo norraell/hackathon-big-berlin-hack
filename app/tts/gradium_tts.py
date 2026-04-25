@@ -6,7 +6,8 @@ import json
 import logging
 from typing import Optional, Callable
 
-import websockets
+from websockets.asyncio.client import ClientConnection, connect
+from websockets.exceptions import ConnectionClosed
 
 from app.config import settings
 
@@ -44,7 +45,7 @@ class GradiumTTSHandler:
         self.on_word_boundary = on_word_boundary
         
         # WebSocket connection
-        self.ws: Optional[websockets.WebSocketClientProtocol] = None
+        self.ws: Optional[ClientConnection] = None
         self.is_connected = False
         self.is_speaking = False
         
@@ -74,7 +75,7 @@ class GradiumTTSHandler:
             logger.info(f"Connecting to Gradium at {settings.gradium_tts_endpoint}")
             
             # Connect with API key in header
-            self.ws = await websockets.connect(
+            self.ws = await connect(
                 settings.gradium_tts_endpoint,
                 extra_headers={
                     "x-api-key": settings.gradium_api_key,
@@ -116,17 +117,34 @@ class GradiumTTSHandler:
         
         try:
             if self.ws:
-                # Send end of stream
-                await self.ws.send(json.dumps({"type": "end_of_stream"}))
                 await self.ws.close()
             
             self.is_connected = False
+            self.is_speaking = False
             self.ws = None
             
             logger.info("Disconnected from Gradium")
             
         except Exception as e:
             logger.error(f"Error disconnecting from Gradium: {e}", exc_info=True)
+
+    async def finalize_current_utterance(self) -> None:
+        """Mark the current utterance complete without closing the connection.
+        
+        Gradium uses ``end_of_stream`` as a terminal signal for the session, so
+        sending it after every first assistant response closes the TTS stream and
+        can cascade into the phone call ending. This method is intended to be
+        used at turn boundaries while keeping the WebSocket open for follow-up
+        assistant messages in the same call.
+        """
+        if not self.is_connected or not self.ws:
+            return
+
+        try:
+            await self.ws.send(json.dumps({"type": "flush"}))
+            logger.debug("Sent utterance flush to Gradium")
+        except Exception as e:
+            logger.error(f"Error finalizing utterance: {e}", exc_info=True)
 
     async def synthesize_text(self, text: str) -> None:
         """Send text to Gradium for synthesis.
@@ -136,6 +154,9 @@ class GradiumTTSHandler:
         """
         if not self.is_connected:
             await self.connect()
+        
+        if not self.ws:
+            raise RuntimeError("Gradium WebSocket is not connected")
         
         try:
             # Send text message
@@ -195,7 +216,7 @@ class GradiumTTSHandler:
                 elif message_type == "error":
                     logger.error(f"Gradium error: {data.get('message')}")
                     
-        except websockets.exceptions.ConnectionClosed:
+        except ConnectionClosed:
             logger.info("Gradium connection closed")
             self.is_connected = False
         except Exception as e:
