@@ -75,13 +75,13 @@ def test_basic_api_access():
     try:
         import google.generativeai as genai
         
-        genai.configure(api_key=settings.gemini_api_key)
+        genai.configure(api_key=settings.gemini_api_key)  # type: ignore[attr-defined]
         print("✓ API configured successfully")
         
         # Try to list models
         print("\nAttempting to list available models...")
         try:
-            models = genai.list_models()
+            models = genai.list_models()  # type: ignore[attr-defined]
             model_names = [m.name for m in models]
             print(f"✓ Successfully retrieved {len(model_names)} models")
             
@@ -127,12 +127,12 @@ def test_simple_generation():
     try:
         import google.generativeai as genai
         
-        genai.configure(api_key=settings.gemini_api_key)
+        genai.configure(api_key=settings.gemini_api_key)  # type: ignore[attr-defined]
         
         # Try with gemini-pro first
         print("Testing with gemini-pro model...")
         try:
-            model = genai.GenerativeModel('gemini-pro')
+            model = genai.GenerativeModel('gemini-pro')  # type: ignore[attr-defined]
             response = model.generate_content("Say 'Hello' in one word")
             print(f"✓ Generation successful!")
             print(f"  Response: {response.text[:100]}")
@@ -143,7 +143,7 @@ def test_simple_generation():
             # Try alternative model
             print("\nTrying gemini-1.5-flash...")
             try:
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                model = genai.GenerativeModel('gemini-1.5-flash')  # type: ignore[attr-defined]
                 response = model.generate_content("Say 'Hello' in one word")
                 print(f"✓ Generation successful with gemini-1.5-flash!")
                 print(f"  Response: {response.text[:100]}")
@@ -180,18 +180,19 @@ async def test_live_api():
         print("\nAttempting to connect to Live API...")
         print("  Model: models/gemini-2.0-flash-exp")
         
-        try:
-            config = types.LiveConnectConfig(
-                response_modalities=["AUDIO"],
-                speech_config=types.SpeechConfig(
-                    voice_config=types.VoiceConfig(
-                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                            voice_name="Puck"
-                        )
+        # Define config outside try block so it's available in except block
+        config = types.LiveConnectConfig(
+            response_modalities=["AUDIO"],  # type: ignore[arg-type]
+            speech_config=types.SpeechConfig(
+                voice_config=types.VoiceConfig(
+                    prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                        voice_name="Puck"
                     )
-                ),
-            )
-            
+                )
+            ),
+        )
+        
+        try:
             async with client.aio.live.connect(
                 model="models/gemini-2.0-flash-exp",
                 config=config

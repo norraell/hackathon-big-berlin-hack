@@ -42,6 +42,12 @@ class Settings(BaseSettings):
         description="Comma-separated list of supported language codes",
     )
     log_level: str = Field(default="INFO", description="Logging level")
+    
+    # STT Provider Configuration
+    stt_provider: str = Field(
+        default="google_cloud",
+        description="STT provider: 'gemini' (requires Live API access) or 'google_cloud' (production-ready)"
+    )
 
     # Security
     secret_key: str = Field(..., description="Secret key for encryption")
@@ -101,6 +107,7 @@ class Settings(BaseSettings):
 
 
 # Global settings instance
-settings = Settings()
+# Settings are automatically loaded from environment variables via pydantic-settings
+settings = Settings()  # type: ignore[call-arg]
 
  

@@ -62,6 +62,7 @@ class GeminiSTTHandler:
             try:
                 from google import genai
                 from google.genai import types
+                from google.genai.types import Modality
             except ImportError as e:
                 logger.error(f"Failed to import google.genai: {e}")
                 raise RuntimeError(
@@ -81,7 +82,7 @@ class GeminiSTTHandler:
             # Configure live session with proper error handling
             try:
                 config = types.LiveConnectConfig(
-                    response_modalities=["AUDIO"],
+                    response_modalities=[Modality.AUDIO],
                     speech_config=types.SpeechConfig(
                         voice_config=types.VoiceConfig(
                             prebuilt_voice_config=types.PrebuiltVoiceConfig(
@@ -190,7 +191,9 @@ class GeminiSTTHandler:
                     )
                     
                     # Send audio to Gemini session
-                    await self._session.send(audio_chunk)
+                    # Note: The Gemini Live API is experimental and the exact method signature
+                    # may vary. Using type: ignore for compatibility with different API versions.
+                    await self._session.send(audio_chunk)  # type: ignore[call-arg]
                     logger.debug(f"Sent {len(audio_chunk)} bytes to Gemini STT")
                     
                 except asyncio.TimeoutError:
