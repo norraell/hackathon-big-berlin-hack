@@ -1,0 +1,36 @@
+
+# Core ML
+transformers==4.41.0
+accelerate==0.30.0
+torch==2.3.0
+huggingface_hub==0.23.0
+datasets==2.19.0
+scikit-learn==1.4.2
+joblib==1.4.2
+pandas==2.2.2
+numpy==1.26.4
+
+# Google Gemini
+google-generativeai==0.5.4
+google-cloud-aiplatform==1.52.0
+
+# Backend API
+fastapi==0.111.0
+uvicorn==0.29.0
+pydantic==2.7.1
+python-dotenv==1.0.1
+httpx==0.27.0
+
+# Audio / Voice
+pyaudio==0.2.14
+sounddevice==0.4.6
+websockets==12.0
+
+# Utilities
+tqdm==4.66.4
+loguru==0.7.2
+rich==13.7.1
+
+peft==0.11.1
+trl==0.9.4
+bitsandbytes==0.43.1

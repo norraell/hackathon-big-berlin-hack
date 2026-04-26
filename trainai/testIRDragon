@@ -1,0 +1,210 @@
+"""
+05_test_intent_router.py
+
+Evaluates the saved intent router on the held-out test set and prints:
+  1. Full classification report (precision / recall / F1 per class)
+  2. Confusion matrix (which classes get confused with which)
+  3. Live demo predictions on 26 hand-crafted prompts — one per real-world
+     phrasing style, covering all 12 action buckets
+
+Input files:
+  data/processed/test_intent.csv   — produced by 02_prepare_bitext.py
+  models/intent_router.joblib      — produced by 04_train_intent_router.py
+
+The 12 action buckets (column 'intent' in test_intent.csv) are:
+  account_management | billing | cancellation | claim_status |
+  complaint | escalate_human | file_claim | general_inquiry |
+  new_policy | policy_change | policy_info | quote | renew_policy
+
+Run this after 04_train_intent_router.py. No API key needed.
+"""
+
+from pathlib import Path
+
+import joblib
+import pandas as pd
+from loguru import logger
+from sklearn.metrics import classification_report, confusion_matrix
+
+# ── Paths — must match outputs of 02 and 04 ───────────────────────────────────
+TEST_PATH  = Path("data/processed/test_intent.csv")
+MODEL_PATH = Path("models/intent_router.joblib")
+
+# ── Demo prompts ──────────────────────────────────────────────────────────────
+# 26 hand-crafted prompts covering all 12 action buckets in varied phrasing.
+# Expected label is shown in the comment — these are used for visual inspection
+# only, not for scoring. Includes typos and informal language to stress-test.
+DEMO_PROMPTS: list[tuple[str, str]] = [
+
+    # file_claim (3)
+    ("I need to file a claim for my car accident last week",          "file_claim"),
+    ("A tree fell on my roof during the storm, how do I report it?",  "file_claim"),
+    ("i wanna report an incidnt that happend yesterday",              "file_claim"),
+
+    # claim_status (2)
+    ("What is the current status of my claim number CLM-4821?",       "claim_status"),
+    ("when will i receive payment for my accepted settlement",        "claim_status"),
+
+    # policy_info (3)
+    ("What does my health insurance cover for dental treatment?",     "policy_info"),
+    ("can u tell me more about my auto insurance policy",             "policy_info"),
+    ("I want to know what my travel insurance includes",              "policy_info"),
+
+    # policy_change (2)
+    ("I need to add a new driver to my auto insurance policy",        "policy_change"),
+    ("I want to upgrade my home coverage to include flood damage",    "policy_change"),
+
+    # new_policy (2)
+    ("I would like to buy a new life insurance policy",               "new_policy"),
+    ("can you compare your pet insurance plans for me",               "new_policy"),
+
+    # cancellation (2)
+    ("How do I cancel my insurance policy?",                          "cancellation"),
+    ("what fees will I be charged if I cancel my policy early",       "cancellation"),
+
+    # renew_policy (2)
+    ("My policy expires next month, how do I renew it?",              "renew_policy"),
+    ("i need to renew my health insurance before it expires",         "renew_policy"),
+
+    # billing (3)
+    ("What payment methods do you accept?",                           "billing"),
+    ("I never received my invoice from last month",                   "billing"),
+    ("I want to schedule my monthly premium payments automatically",  "billing"),
+
+    # quote (2)
+    ("Can you give me a quote for home insurance?",                   "quote"),
+    ("how much would it cost to insure my 2022 Toyota Camry",        "quote"),
+
+    # complaint (2)
+    ("I want to dispute an invoice I received last week",             "complaint"),
+    ("I am appealing the denial of my insurance claim",               "complaint"),
+
+    # escalate_human (2)
+    ("Please connect me to a human agent right now",                  "escalate_human"),
+    ("I want to speak with an insurance representative urgently",     "escalate_human"),
+
+    # general_inquiry (1)
+    ("Hello, I have a general question about your services",          "general_inquiry"),
+
+    # account_management (2)  — maps from change_personal_details in bitext
+    ("I need to update my home address on my account",               "account_management"),
+    ("How do I change my email address on my profile?",              "account_management"),
+]
+
+
+# ── Evaluation ────────────────────────────────────────────────────────────────
+
+def evaluate() -> None:
+
+    # Sanity checks
+    if not MODEL_PATH.exists():
+        raise FileNotFoundError(
+            f"Model not found at {MODEL_PATH}.\n"
+            "Run 04_train_intent_router.py first."
+        )
+    if not TEST_PATH.exists():
+        raise FileNotFoundError(
+            f"Test set not found at {TEST_PATH}.\n"
+            "Run 01_download_datasets.py → 02_prepare_bitext.py first."
+        )
+
+    pipeline = joblib.load(MODEL_PATH)
+    test_df  = pd.read_csv(TEST_PATH)
+
+    logger.info(
+        f"Loaded model: {MODEL_PATH}\n"
+        f"Test set   : {len(test_df):,} rows | "
+        f"Classes    : {sorted(pipeline.classes_)}"
+    )
+
+    # ── 1. Test-set classification report ─────────────────────────────────────
+    preds  = pipeline.predict(test_df["text"])
+    report = classification_report(
+        test_df["intent"],
+        preds,
+        labels=sorted(pipeline.classes_),
+        digits=3,
+        zero_division=0,
+    )
+
+    print("\n" + "=" * 65)
+    print("TEST SET CLASSIFICATION REPORT")
+    print("(held-out 10% of bitext data — never seen during training)")
+    print("=" * 65)
+    print(report)
+
+    # ── 2. Confusion matrix ────────────────────────────────────────────────────
+    sorted_classes = sorted(pipeline.classes_)
+    cm     = confusion_matrix(test_df["intent"], preds, labels=sorted_classes)
+    cm_df  = pd.DataFrame(cm, index=sorted_classes, columns=sorted_classes)
+
+    print("CONFUSION MATRIX  (rows = true label, cols = predicted label)")
+    print("Non-zero off-diagonal cells = misclassifications to investigate:\n")
+    print(cm_df.to_string())
+
+    # Highlight the worst misclassifications
+    off_diag = cm_df.copy()
+    for cls in sorted_classes:
+        off_diag.loc[cls, cls] = 0      # zero the diagonal
+
+    mistakes = (
+        off_diag.stack()
+        .reset_index()
+        .rename(columns={"level_0": "true", "level_1": "predicted", 0: "count"})
+        .query("count > 0")
+        .sort_values("count", ascending=False)
+        .head(10)
+    )
+    if not mistakes.empty:
+        print("\nTop misclassifications:")
+        for _, row in mistakes.iterrows():
+            print(f"  true={row['true']:<22} → predicted={row['predicted']:<22} ({int(row['count'])} times)")
+
+    # ── 3. Overall accuracy ───────────────────────────────────────────────────
+    accuracy = (preds == test_df["intent"].values).mean() * 100
+    print(f"\nOverall test accuracy: {accuracy:.2f}%")
+
+    # ── 4. Demo prompt predictions ────────────────────────────────────────────
+    demo_texts    = [p for p, _ in DEMO_PROMPTS]
+    demo_expected = [e for _, e in DEMO_PROMPTS]
+    demo_preds    = pipeline.predict(demo_texts)
+    demo_probas   = pipeline.predict_proba(demo_texts)
+
+    print("\n" + "=" * 65)
+    print("LIVE DEMO PREDICTIONS")
+    print("(hand-crafted prompts covering all 12 action buckets)")
+    print("=" * 65)
+
+    correct_demo = 0
+    for prompt, expected, pred, proba in zip(
+        demo_texts, demo_expected, demo_preds, demo_probas
+    ):
+        confidence = max(proba) * 100
+        match      = "✓" if pred == expected else "✗"
+        if pred == expected:
+            correct_demo += 1
+
+        print(f"\n  {match} Prompt     : {prompt}")
+        print(f"    Expected   : {expected}")
+        print(f"    Predicted  : {pred}")
+        print(f"    Confidence : {confidence:.1f}%")
+        if pred != expected:
+            # Show what the correct class got
+            correct_idx    = list(pipeline.classes_).index(expected) if expected in pipeline.classes_ else -1
+            correct_prob   = proba[correct_idx] * 100 if correct_idx >= 0 else 0
+            print(f"    ← correct class confidence was only {correct_prob:.1f}%")
+
+    demo_acc = correct_demo / len(DEMO_PROMPTS) * 100
+    print(f"\nDemo accuracy: {correct_demo}/{len(DEMO_PROMPTS)} = {demo_acc:.1f}%")
+    print(
+        "\nIf demo accuracy is low, common causes:\n"
+        "  • account_management has very few training examples (only 1 raw intent)\n"
+        "  • Re-run 02 and check the action distribution log\n"
+        "  • Consider increasing C in LogisticRegression or adding more examples"
+    )
+
+
+# ── Entry point ───────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    evaluate()
