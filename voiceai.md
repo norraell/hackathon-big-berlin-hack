@@ -1,5 +1,40 @@
 Here is the practical setup.
-
+insurance-gemini-voice-ai/
+│
+├── requirements.txt
+├── .env.example
+├── README.md
+│
+├── data/
+│   ├── raw/
+│   │   ├── bitext_insurance_raw.jsonl
+│   │   └── rhesis_insurance_eval_raw.jsonl
+│   │
+│   ├── processed/
+│   │   ├── train_intent.csv
+│   │   ├── val_intent.csv
+│   │   ├── test_intent.csv
+│   │   └── rhesis_eval.csv
+│
+├── scripts/
+│   ├── 01_download_datasets.py
+│   ├── 02_prepare_bitext.py
+│   ├── 03_prepare_rhesis_eval.py
+│   ├── 04_train_intent_router.py
+│   ├── 05_test_intent_router.py
+│   └── 06_run_rhesis_eval.py
+│
+├── models/
+│   └── intent_router.joblib
+│
+├── backend/
+│   ├── app.py
+│   ├── insurance_tools.py
+│   └── schemas.py
+│
+└── gemini_voice/
+    ├── gemini_text_tool_test.py
+    └── gemini_live_voice_agent.py
 ## 1. Create project
 
 ```bash
@@ -9,7 +44,13 @@ python -m venv .venv
 source .venv/bin/activate
 pip install datasets transformers scikit-learn fastapi uvicorn google-genai pandas
 ```
-
+datasets — downloads/loads Hugging Face datasets, like Bitext and Rhesis.
+transformers — loads Hugging Face models, like Mistral.
+scikit-learn — trains simple machine-learning models, like an intent classifier.
+fastapi — creates your backend API.
+uvicorn — runs the FastAPI server.
+google-genai — connects your app to Gemini API.
+pandas — handles tables/data cleaning.
 ## 2. Load Bitext dataset
 
 Use Bitext as your intent/category training data. It contains insurance-style user instructions with labels like intent and category. ([Hugging Face][1])
